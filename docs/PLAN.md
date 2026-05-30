@@ -81,12 +81,12 @@ Success criteria:
 Goal: Gate the Kanban behind a hardcoded login (`user` / `password`) with a working logout. Session is server-side; frontend reflects auth state.
 
 Substeps:
-- [ ] Backend: `POST /api/login` accepts JSON `{username, password}`, validates against hardcoded creds, sets a signed session cookie (FastAPI + `itsdangerous` or starlette `SessionMiddleware`).
-- [ ] Backend: `POST /api/logout` clears the cookie.
-- [ ] Backend: `GET /api/me` returns `{username}` when logged in, 401 otherwise.
-- [ ] Frontend: add a `/login` route (or client-rendered overlay) with username/password form.
-- [ ] Frontend: on app load, fetch `/api/me`; if 401, show login; if 200, show Kanban.
-- [ ] Frontend: add a Logout button in the header; clicking calls `/api/logout` and returns to the login screen.
+- [x] Backend: `POST /api/login` accepts JSON `{username, password}`, validates against hardcoded creds, sets a signed session cookie (FastAPI + `itsdangerous` or starlette `SessionMiddleware`).
+- [x] Backend: `POST /api/logout` clears the cookie.
+- [x] Backend: `GET /api/me` returns `{username}` when logged in, 401 otherwise.
+- [x] Frontend: add a `/login` route (or client-rendered overlay) with username/password form.
+- [x] Frontend: on app load, fetch `/api/me`; if 401, show login; if 200, show Kanban.
+- [x] Frontend: add a Logout button in the header; clicking calls `/api/logout` and returns to the login screen.
 
 Tests:
 - Backend pytest: login with correct creds returns 200 + sets cookie; wrong creds returns 401; `/api/me` returns 401 without cookie and 200 with valid cookie; logout clears the cookie.
