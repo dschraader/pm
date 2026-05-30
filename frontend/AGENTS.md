@@ -43,11 +43,14 @@ A Next.js demo of the Kanban board UI. Pure frontend, in-memory state only. Will
 - `data-testid` on columns and cards is part of the public test contract - do not rename.
 - No emojis anywhere.
 
+## Static export
+
+`next.config.ts` sets `output: "export"` and `images: { unoptimized: true }`. `npm run build` writes a fully static site to `frontend/out/`, which the Dockerfile copies into `backend/static/` for FastAPI to serve at `/`. `npm run dev` continues to work for local iteration (`output: "export"` only affects `next build`).
+
 ## What this demo does NOT yet do
 
 - No persistence (state resets on reload).
 - No auth, no backend, no API client.
 - No AI chat sidebar.
-- Not configured for `next export` / static output - that comes in Part 3.
 
 When extending this directory, keep the file structure flat and consult `docs/PLAN.md` for the part currently in progress.

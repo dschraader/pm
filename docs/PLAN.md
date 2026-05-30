@@ -58,11 +58,11 @@ Success criteria:
 Goal: Build the existing Next.js demo as a static export and serve it from FastAPI at `/`, replacing the placeholder. No backend data flow yet.
 
 Substeps:
-- [ ] Configure `frontend/next.config.ts` for static export (`output: 'export'`).
-- [ ] Verify the demo still builds and the static output (`frontend/out/`) is functional.
-- [ ] Update `Dockerfile` to a multi-stage build: stage 1 builds the frontend with Node, stage 2 copies `frontend/out/` into the Python image and points FastAPI's static mount at it.
-- [ ] Mount the exported frontend at `/` in FastAPI; keep `/api/*` reserved for backend routes.
-- [ ] Confirm hashed asset URLs (CSS/JS) resolve correctly through the FastAPI static mount.
+- [x] Configure `frontend/next.config.ts` for static export (`output: 'export'`).
+- [x] Verify the demo still builds and the static output (`frontend/out/`) is functional.
+- [x] Update `Dockerfile` to a multi-stage build: stage 1 builds the frontend with Node, stage 2 copies `frontend/out/` into the Python image and points FastAPI's static mount at it.
+- [x] Mount the exported frontend at `/` in FastAPI; keep `/api/*` reserved for backend routes.
+- [x] Confirm hashed asset URLs (CSS/JS) resolve correctly through the FastAPI static mount.
 
 Tests:
 - `backend/tests/test_static.py` updated: `GET /` returns the built Next.js HTML (assert on a known string from the page, e.g. "Kanban Studio").

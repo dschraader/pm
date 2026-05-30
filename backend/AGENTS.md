@@ -9,8 +9,8 @@ FastAPI application that will serve the API and the built Next.js frontend. Mana
   - `GET /api/health` -> `{"status": "ok"}`
   - `/` (and all non-`/api` paths) -> static files from `backend/static/` via `StaticFiles(html=True)`.
 - `app/__init__.py` - package marker.
-- `static/index.html` - placeholder served at `/`. Replaced by the built Next.js export in Part 3.
-- `tests/` - pytest suite using `fastapi.testclient.TestClient`. `conftest.py` provides a `client` fixture.
+- `static/` - empty in the repo (only `.gitkeep`). The Dockerfile's frontend-build stage populates it with the Next.js static export at image-build time, so the container serves the real Kanban UI at `/`. Running uvicorn outside Docker against an empty `static/` will 404 on `/` - use `docker compose` instead.
+- `tests/` - pytest suite using `fastapi.testclient.TestClient`. `conftest.py` provides a `client` fixture. Tests are written assuming the static dir contains the built frontend, so run them inside the container.
 
 ## Conventions
 
