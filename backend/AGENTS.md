@@ -10,12 +10,26 @@ FastAPI application that will serve the API and the built Next.js frontend. Mana
   - `POST /api/login` -> validates body via `app.auth.check_credentials`, stores `username` in the session, returns `{"username": ...}`. 401 on bad creds.
   - `POST /api/logout` -> clears the session.
   - `GET /api/me` -> returns `{"username": ...}` from the session, 401 if absent.
+  - `GET /api/board` -> the signed-in user's board as `{columns, cards}`. Shape matches the frontend's `BoardData`.
+  - `PUT /api/board/columns/{column_id}` -> rename a column. 404 if the column doesn't belong to the user's board.
+  - `POST /api/board/columns/{column_id}/cards` -> create a card at the end of the column.
+  - `PUT /api/board/cards/{card_id}` -> edit title/details.
+  - `DELETE /api/board/cards/{card_id}` -> delete a card; remaining cards in the column shift down by 1.
+  - `POST /api/board/cards/{card_id}/move` -> body `{toColumnId, toIndex}`; works within a column or across columns; `toIndex` is clamped to the target column's bounds.
+  - All `board` routes require auth (401 if not signed in) and return the full updated board on success.
   - `SessionMiddleware` reads `SESSION_SECRET` env var (dev default ships with the image), cookie name `pm_session`, `same_site=lax`.
+  - `lifespan` calls `db.init_db()` on startup so the DB is created and seeded before any request lands.
   - `/` (and all non-`/api` paths) -> static files from `backend/static/` via `StaticFiles(html=True)`.
 - `app/auth.py` - hardcoded `user` / `password` for the MVP, plus `current_user` FastAPI dependency that reads the session and raises 401.
+- `app/db.py` - SQLite layer: `DB_PATH` (env-driven, defaults to `/app/data/pm.db`), `connect()` (sets `foreign_keys=ON`), `get_db()` FastAPI dependency (commits on success, rolls back on exception), `init_db()` runs DDL with `IF NOT EXISTS` and seeds the default user/board on a fresh DB. See `docs/DATABASE.md` for the schema.
+- `app/board.py` - all Kanban data-access functions, scoped to a `username`. Each mutation looks up the user's board, verifies the target column/card belongs to that board (404 otherwise), then writes. `move_card` stashes the moving card at `position=-1` to keep position UPDATEs from colliding.
 - `app/__init__.py` - package marker.
 - `static/` - empty in the repo (only `.gitkeep`). The Dockerfile's frontend-build stage populates it with the Next.js static export at image-build time, so the container serves the real Kanban UI at `/`. Running uvicorn outside Docker against an empty `static/` will 404 on `/` - use `docker compose` instead.
-- `tests/` - pytest suite using `fastapi.testclient.TestClient`. `conftest.py` provides a `client` fixture. Tests are written assuming the static dir contains the built frontend, so run them inside the container.
+- `tests/` - pytest suite using `fastapi.testclient.TestClient`. `conftest.py` provides:
+  - An `autouse=True` fixture that monkeypatches `db.DB_PATH` to a fresh tmp file per test and runs `init_db()` - tests are fully isolated.
+  - A `client` fixture (unauthenticated `TestClient`).
+  - An `auth_client` fixture that logs in as the default user before the test runs.
+  - Tests assume the static dir contains the built frontend, so run them inside the container: `docker compose exec backend uv run pytest`.
 
 ## Conventions
 

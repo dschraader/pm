@@ -107,7 +107,7 @@ Substeps:
 - [x] Draft `docs/DATABASE.md` covering: tables (`users`, `boards`, `columns`, `cards`), columns/types, primary and foreign keys, ordering strategy (integer `position` per column / per board), constraints, and seed data plan (auto-create `user` on first launch with a starter board mirroring `initialData`).
 - [x] Include a small ER diagram or table listing in `docs/DATABASE.md`.
 - [x] Note JSON storage approach: the board is normalized in tables; the API response shape matches the current `BoardData` (`{columns, cards}`) so the frontend needs no model changes.
-- [ ] User reviews `docs/DATABASE.md` and signs off.
+- [x] User reviews `docs/DATABASE.md` and signs off.
 
 Tests:
 - None yet (no code).
@@ -122,16 +122,16 @@ Success criteria:
 Goal: Implement the Kanban CRUD API against SQLite. Auto-create the DB on first run. Cover with unit tests.
 
 Substeps:
-- [ ] Add SQLite + SQLAlchemy (or sqlite3 directly if simpler) to `backend/pyproject.toml`.
-- [ ] Implement schema-creation-on-startup: if `data.db` does not exist, create tables and seed the default user's starter board.
-- [ ] Routes (all require auth):
-  - [ ] `GET /api/board` - returns the signed-in user's board as `{columns, cards}`.
-  - [ ] `PUT /api/board/columns/{column_id}` - rename column.
-  - [ ] `POST /api/board/columns/{column_id}/cards` - create card.
-  - [ ] `PUT /api/board/cards/{card_id}` - edit title/details.
-  - [ ] `DELETE /api/board/cards/{card_id}` - delete card.
-  - [ ] `POST /api/board/cards/{card_id}/move` - move card; body `{toColumnId, toIndex}`.
-- [ ] Each route is scoped to the signed-in user; returns 401 unauthenticated, 404 on missing resources.
+- [x] Add SQLite + SQLAlchemy (or sqlite3 directly if simpler) to `backend/pyproject.toml`.
+- [x] Implement schema-creation-on-startup: if `data.db` does not exist, create tables and seed the default user's starter board.
+- [x] Routes (all require auth):
+  - [x] `GET /api/board` - returns the signed-in user's board as `{columns, cards}`.
+  - [x] `PUT /api/board/columns/{column_id}` - rename column.
+  - [x] `POST /api/board/columns/{column_id}/cards` - create card.
+  - [x] `PUT /api/board/cards/{card_id}` - edit title/details.
+  - [x] `DELETE /api/board/cards/{card_id}` - delete card.
+  - [x] `POST /api/board/cards/{card_id}/move` - move card; body `{toColumnId, toIndex}`.
+- [x] Each route is scoped to the signed-in user; returns 401 unauthenticated, 404 on missing resources.
 
 Tests:
 - Pytest covering each route: happy path, unauthenticated rejection, cross-user isolation (create a second user fixture), invalid input (missing fields, bad IDs).

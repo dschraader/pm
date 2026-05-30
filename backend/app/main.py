@@ -1,4 +1,5 @@
 import os
+from contextlib import asynccontextmanager
 from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
@@ -6,11 +7,19 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
+from app import board, db
 from app.auth import check_credentials, current_user
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
-app = FastAPI(title="PM Backend")
+
+@asynccontextmanager
+async def lifespan(_app: FastAPI):
+    db.init_db()
+    yield
+
+
+app = FastAPI(title="PM Backend", lifespan=lifespan)
 
 app.add_middleware(
     SessionMiddleware,
@@ -24,6 +33,25 @@ app.add_middleware(
 class LoginRequest(BaseModel):
     username: str
     password: str
+
+
+class RenameColumnRequest(BaseModel):
+    title: str
+
+
+class CreateCardRequest(BaseModel):
+    title: str
+    details: str = ""
+
+
+class EditCardRequest(BaseModel):
+    title: str
+    details: str = ""
+
+
+class MoveCardRequest(BaseModel):
+    toColumnId: str
+    toIndex: int
 
 
 @app.get("/api/health")
@@ -48,6 +76,68 @@ def logout(request: Request) -> dict[str, bool]:
 @app.get("/api/me")
 def me(username: str = Depends(current_user)) -> dict[str, str]:
     return {"username": username}
+
+
+@app.get("/api/board")
+def get_board(
+    username: str = Depends(current_user),
+    conn=Depends(db.get_db),
+):
+    return board.load_board(conn, username)
+
+
+@app.put("/api/board/columns/{column_id}")
+def rename_column_route(
+    column_id: str,
+    body: RenameColumnRequest,
+    username: str = Depends(current_user),
+    conn=Depends(db.get_db),
+):
+    board.rename_column(conn, username, column_id, body.title)
+    return board.load_board(conn, username)
+
+
+@app.post("/api/board/columns/{column_id}/cards")
+def create_card_route(
+    column_id: str,
+    body: CreateCardRequest,
+    username: str = Depends(current_user),
+    conn=Depends(db.get_db),
+):
+    board.create_card(conn, username, column_id, body.title, body.details)
+    return board.load_board(conn, username)
+
+
+@app.put("/api/board/cards/{card_id}")
+def edit_card_route(
+    card_id: str,
+    body: EditCardRequest,
+    username: str = Depends(current_user),
+    conn=Depends(db.get_db),
+):
+    board.edit_card(conn, username, card_id, body.title, body.details)
+    return board.load_board(conn, username)
+
+
+@app.delete("/api/board/cards/{card_id}")
+def delete_card_route(
+    card_id: str,
+    username: str = Depends(current_user),
+    conn=Depends(db.get_db),
+):
+    board.delete_card(conn, username, card_id)
+    return board.load_board(conn, username)
+
+
+@app.post("/api/board/cards/{card_id}/move")
+def move_card_route(
+    card_id: str,
+    body: MoveCardRequest,
+    username: str = Depends(current_user),
+    conn=Depends(db.get_db),
+):
+    board.move_card(conn, username, card_id, body.toColumnId, body.toIndex)
+    return board.load_board(conn, username)
 
 
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")
