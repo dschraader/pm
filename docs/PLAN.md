@@ -104,9 +104,9 @@ Success criteria:
 Goal: Design the SQLite schema for users + Kanban boards + columns + cards, store card/column ordering, and persist any per-user metadata needed. Document the schema and get user sign-off before any backend wiring.
 
 Substeps:
-- [ ] Draft `docs/DATABASE.md` covering: tables (`users`, `boards`, `columns`, `cards`), columns/types, primary and foreign keys, ordering strategy (integer `position` per column / per board), constraints, and seed data plan (auto-create `user` on first launch with a starter board mirroring `initialData`).
-- [ ] Include a small ER diagram or table listing in `docs/DATABASE.md`.
-- [ ] Note JSON storage approach: the board is normalized in tables; the API response shape matches the current `BoardData` (`{columns, cards}`) so the frontend needs no model changes.
+- [x] Draft `docs/DATABASE.md` covering: tables (`users`, `boards`, `columns`, `cards`), columns/types, primary and foreign keys, ordering strategy (integer `position` per column / per board), constraints, and seed data plan (auto-create `user` on first launch with a starter board mirroring `initialData`).
+- [x] Include a small ER diagram or table listing in `docs/DATABASE.md`.
+- [x] Note JSON storage approach: the board is normalized in tables; the API response shape matches the current `BoardData` (`{columns, cards}`) so the frontend needs no model changes.
 - [ ] User reviews `docs/DATABASE.md` and signs off.
 
 Tests:
