@@ -4,7 +4,7 @@ from pathlib import Path
 
 from fastapi import Depends, FastAPI, HTTPException, Request, status
 from fastapi.staticfiles import StaticFiles
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from starlette.middleware.sessions import SessionMiddleware
 
 from app import ai, board, chat, db
@@ -13,8 +13,13 @@ from app.auth import check_credentials, current_user
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
 
 
+_SESSION_SECRET = os.environ.get("SESSION_SECRET", "")
+
+
 @asynccontextmanager
 async def lifespan(_app: FastAPI):
+    if not _SESSION_SECRET:
+        raise RuntimeError("SESSION_SECRET environment variable must be set")
     db.init_db()
     yield
 
@@ -23,7 +28,7 @@ app = FastAPI(title="PM Backend", lifespan=lifespan)
 
 app.add_middleware(
     SessionMiddleware,
-    secret_key=os.environ.get("SESSION_SECRET", "dev-secret-change-me"),
+    secret_key=_SESSION_SECRET or "placeholder-replaced-at-startup",
     session_cookie="pm_session",
     same_site="lax",
     https_only=False,
@@ -36,16 +41,16 @@ class LoginRequest(BaseModel):
 
 
 class RenameColumnRequest(BaseModel):
-    title: str
+    title: str = Field(min_length=1)
 
 
 class CreateCardRequest(BaseModel):
-    title: str
+    title: str = Field(min_length=1)
     details: str = ""
 
 
 class EditCardRequest(BaseModel):
-    title: str
+    title: str = Field(min_length=1)
     details: str = ""
 
 
@@ -207,15 +212,15 @@ def ai_chat(
             status_code=502, detail=f"AI provider error: {exc}"
         )
 
-    for mutation in response.mutations:
-        _apply_mutation(conn, username, mutation)
-
     chat.append_exchange(
         conn,
         username,
         user_text=body.message,
         assistant_text=response.reply,
     )
+
+    for mutation in response.mutations:
+        _apply_mutation(conn, username, mutation)
 
     return {
         "reply": response.reply,

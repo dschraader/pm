@@ -7,6 +7,7 @@ from pydantic import BaseModel, Field
 
 MODEL = "openai/gpt-oss-120b"
 BASE_URL = "https://openrouter.ai/api/v1"
+MAX_HISTORY = 40
 
 
 class AIConfigError(RuntimeError):
@@ -22,20 +23,20 @@ class ChatMessage(BaseModel):
 class RenameColumnMutation(BaseModel):
     type: Literal["rename_column"]
     column_id: str
-    title: str
+    title: str = Field(min_length=1)
 
 
 class CreateCardMutation(BaseModel):
     type: Literal["create_card"]
     column_id: str
-    title: str
+    title: str = Field(min_length=1)
     details: str
 
 
 class EditCardMutation(BaseModel):
     type: Literal["edit_card"]
     card_id: str
-    title: str
+    title: str = Field(min_length=1)
     details: str
 
 
@@ -118,7 +119,7 @@ def chat(
         board_json=json.dumps(board_state, indent=2)
     )
     messages: list[dict[str, str]] = [{"role": "system", "content": system_prompt}]
-    for m in history:
+    for m in history[-MAX_HISTORY:]:
         messages.append({"role": m.role, "content": m.content})
     messages.append({"role": "user", "content": user_message})
 
