@@ -66,3 +66,46 @@ export const moveCard = (cardId: string, toColumnId: string, toIndex: number) =>
     method: "POST",
     body: JSON.stringify({ toColumnId, toIndex }),
   });
+
+export type ChatMessageRecord = {
+  role: "user" | "assistant";
+  content: string;
+  created_at: string | null;
+};
+
+export type Mutation =
+  | { type: "rename_column"; column_id: string; title: string }
+  | {
+      type: "create_card";
+      column_id: string;
+      title: string;
+      details: string;
+    }
+  | {
+      type: "edit_card";
+      card_id: string;
+      title: string;
+      details: string;
+    }
+  | { type: "delete_card"; card_id: string }
+  | {
+      type: "move_card";
+      card_id: string;
+      to_column_id: string;
+      to_index: number;
+    };
+
+export type ChatResponse = {
+  reply: string;
+  appliedMutations: Mutation[];
+  board: BoardData;
+};
+
+export const fetchChatHistory = () =>
+  json<{ messages: ChatMessageRecord[] }>("/api/ai/chat/history");
+
+export const sendChatMessage = (message: string) =>
+  json<ChatResponse>("/api/ai/chat", {
+    method: "POST",
+    body: JSON.stringify({ message }),
+  });

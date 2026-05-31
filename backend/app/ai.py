@@ -16,6 +16,7 @@ class AIConfigError(RuntimeError):
 class ChatMessage(BaseModel):
     role: Literal["user", "assistant"]
     content: str
+    created_at: str | None = None
 
 
 class RenameColumnMutation(BaseModel):

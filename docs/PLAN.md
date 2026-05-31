@@ -217,12 +217,12 @@ Success criteria:
 Goal: A polished right-hand sidebar for AI chat. When the AI applies mutations, the board refreshes automatically.
 
 Substeps:
-- [ ] Add a collapsible sidebar component in the frontend matching the app's existing palette (blue/purple/navy/yellow). Use the existing Tailwind tokens and design language; no new design system.
-- [ ] Conversation view: scrollable message list, user vs assistant styling, timestamp.
-- [ ] Composer: textarea + send button; submit on Enter, newline on Shift+Enter; disable while in-flight.
-- [ ] On send: `POST /api/ai/chat` with the full message history; append the reply; if `appliedMutations` is non-empty, replace local board state with the returned `board` (no extra fetch needed) and briefly highlight changed cards/columns.
-- [ ] On first load: `GET /api/ai/chat/history` to restore previous conversation.
-- [ ] Empty state and error state in the sidebar.
+- [x] Add a collapsible sidebar component in the frontend matching the app's existing palette (blue/purple/navy/yellow). Use the existing Tailwind tokens and design language; no new design system.
+- [x] Conversation view: scrollable message list, user vs assistant styling, timestamp.
+- [x] Composer: textarea + send button; submit on Enter, newline on Shift+Enter; disable while in-flight.
+- [x] On send: `POST /api/ai/chat` with the full message history; append the reply; if `appliedMutations` is non-empty, replace local board state with the returned `board` (no extra fetch needed) and briefly highlight changed cards/columns.
+- [x] On first load: `GET /api/ai/chat/history` to restore previous conversation.
+- [x] Empty state and error state in the sidebar.
 
 Tests:
 - Vitest: composer behavior (Enter vs Shift+Enter, disabled state), message rendering, mutation-induced board refresh updates the rendered DOM.

@@ -1,7 +1,9 @@
+import { useState } from "react";
 import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KanbanBoard } from "@/components/KanbanBoard";
+import type { BoardData } from "@/lib/kanban";
 import { errorResponse, okResponse, seedBoard } from "@/test/fixtures";
 
 const fetchMock = vi.fn();
@@ -15,14 +17,28 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const renamedBoard = (newTitle: string) => ({
+const Harness = ({ initialBoard }: { initialBoard: BoardData | null }) => {
+  const [board, setBoard] = useState<BoardData | null>(initialBoard);
+  const [mutationError, setMutationError] = useState<string | null>(null);
+  return (
+    <KanbanBoard
+      board={board}
+      setBoard={setBoard}
+      loadError={null}
+      mutationError={mutationError}
+      setMutationError={setMutationError}
+    />
+  );
+};
+
+const renamedBoard = (newTitle: string): BoardData => ({
   ...seedBoard,
   columns: seedBoard.columns.map((column) =>
     column.id === "col-backlog" ? { ...column, title: newTitle } : column
   ),
 });
 
-const boardWithoutCard1 = () => {
+const boardWithoutCard1 = (): BoardData => {
   const remaining = Object.fromEntries(
     Object.entries(seedBoard.cards).filter(([id]) => id !== "card-1")
   );
@@ -38,36 +54,20 @@ const boardWithoutCard1 = () => {
 };
 
 describe("KanbanBoard", () => {
-  it("shows loading then renders columns from the API", async () => {
-    let resolveBoard: (value: Response) => void = () => {};
-    fetchMock.mockImplementationOnce(
-      () =>
-        new Promise<Response>((resolve) => {
-          resolveBoard = resolve;
-        })
-    );
-
-    render(<KanbanBoard />);
+  it("shows the loading state when no board is provided", () => {
+    render(<Harness initialBoard={null} />);
     expect(screen.getByTestId("board-loading")).toBeInTheDocument();
-
-    resolveBoard(okResponse(seedBoard));
-    const columns = await screen.findAllByTestId(/^column-/);
-    expect(columns).toHaveLength(5);
   });
 
-  it("renders an error if the initial fetch fails", async () => {
-    fetchMock.mockResolvedValueOnce(errorResponse(500));
-    render(<KanbanBoard />);
-    expect(await screen.findByTestId("board-load-error")).toBeInTheDocument();
+  it("renders the columns when given a board", () => {
+    render(<Harness initialBoard={seedBoard} />);
+    expect(screen.getAllByTestId(/^column-/)).toHaveLength(5);
   });
 
   it("commits a column rename on blur via PUT", async () => {
-    fetchMock
-      .mockResolvedValueOnce(okResponse(seedBoard))
-      .mockResolvedValueOnce(okResponse(renamedBoard("Inbox")));
+    fetchMock.mockResolvedValueOnce(okResponse(renamedBoard("Inbox")));
 
-    render(<KanbanBoard />);
-    await screen.findAllByTestId(/^column-/);
+    render(<Harness initialBoard={seedBoard} />);
 
     const backlog = screen.getByTestId("column-col-backlog");
     const input = within(backlog).getByLabelText("Column title");
@@ -87,12 +87,9 @@ describe("KanbanBoard", () => {
   });
 
   it("reverts the column title when the rename request fails", async () => {
-    fetchMock
-      .mockResolvedValueOnce(okResponse(seedBoard))
-      .mockResolvedValueOnce(errorResponse(500));
+    fetchMock.mockResolvedValueOnce(errorResponse(500));
 
-    render(<KanbanBoard />);
-    await screen.findAllByTestId(/^column-/);
+    render(<Harness initialBoard={seedBoard} />);
 
     const backlog = screen.getByTestId("column-col-backlog");
     const input = within(backlog).getByLabelText("Column title");
@@ -106,7 +103,7 @@ describe("KanbanBoard", () => {
 
   it("adds a card via POST and renders the server response", async () => {
     const newId = "card-new";
-    const updated = {
+    const updated: BoardData = {
       ...seedBoard,
       cards: {
         ...seedBoard.cards,
@@ -118,12 +115,9 @@ describe("KanbanBoard", () => {
           : column
       ),
     };
-    fetchMock
-      .mockResolvedValueOnce(okResponse(seedBoard))
-      .mockResolvedValueOnce(okResponse(updated));
+    fetchMock.mockResolvedValueOnce(okResponse(updated));
 
-    render(<KanbanBoard />);
-    await screen.findAllByTestId(/^column-/);
+    render(<Harness initialBoard={seedBoard} />);
     const backlog = screen.getByTestId("column-col-backlog");
 
     await userEvent.click(
@@ -154,12 +148,9 @@ describe("KanbanBoard", () => {
   });
 
   it("deletes a card via DELETE", async () => {
-    fetchMock
-      .mockResolvedValueOnce(okResponse(seedBoard))
-      .mockResolvedValueOnce(okResponse(boardWithoutCard1()));
+    fetchMock.mockResolvedValueOnce(okResponse(boardWithoutCard1()));
 
-    render(<KanbanBoard />);
-    await screen.findAllByTestId(/^column-/);
+    render(<Harness initialBoard={seedBoard} />);
     const backlog = screen.getByTestId("column-col-backlog");
 
     await userEvent.click(

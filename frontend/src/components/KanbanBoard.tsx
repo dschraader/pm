@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useMemo, useState } from "react";
 import {
   DndContext,
   DragOverlay,
@@ -17,6 +17,11 @@ import { moveCard as moveCardLocal, type BoardData } from "@/lib/kanban";
 import * as api from "@/lib/api";
 
 type KanbanBoardProps = {
+  board: BoardData | null;
+  setBoard: (next: BoardData) => void;
+  loadError: string | null;
+  mutationError: string | null;
+  setMutationError: (msg: string | null) => void;
   onLogout?: () => void;
 };
 
@@ -37,10 +42,14 @@ const findCardLocation = (board: BoardData, cardId: string) => {
   return null;
 };
 
-export const KanbanBoard = ({ onLogout }: KanbanBoardProps = {}) => {
-  const [board, setBoard] = useState<BoardData | null>(null);
-  const [loadError, setLoadError] = useState<string | null>(null);
-  const [mutationError, setMutationError] = useState<string | null>(null);
+export const KanbanBoard = ({
+  board,
+  setBoard,
+  loadError,
+  mutationError,
+  setMutationError,
+  onLogout,
+}: KanbanBoardProps) => {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
 
   const sensors = useSensors(
@@ -49,15 +58,9 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps = {}) => {
     })
   );
 
-  useEffect(() => {
-    api
-      .fetchBoard()
-      .then(setBoard)
-      .catch((err) => setLoadError(errorMessage(err)));
-  }, []);
-
   const runMutation = useCallback(
     async (optimistic: BoardData, request: Promise<BoardData>) => {
+      if (!board) return;
       const previous = board;
       setBoard(optimistic);
       setMutationError(null);
@@ -69,7 +72,7 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps = {}) => {
         setMutationError(errorMessage(err));
       }
     },
-    [board]
+    [board, setBoard, setMutationError]
   );
 
   const handleDragStart = (event: DragStartEvent) => {
@@ -79,29 +82,21 @@ export const KanbanBoard = ({ onLogout }: KanbanBoardProps = {}) => {
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCardId(null);
-    if (!board || !over || active.id === over.id) {
-      return;
-    }
+    if (!board || !over || active.id === over.id) return;
     const activeId = active.id as string;
     const overId = over.id as string;
     const nextColumns = moveCardLocal(board.columns, activeId, overId);
-    if (nextColumns === board.columns) {
-      return;
-    }
+    if (nextColumns === board.columns) return;
     const optimistic: BoardData = { ...board, columns: nextColumns };
     const target = findCardLocation(optimistic, activeId);
-    if (!target) {
-      return;
-    }
+    if (!target) return;
     runMutation(optimistic, api.moveCard(activeId, target.columnId, target.index));
   };
 
   const handleRenameColumn = (columnId: string, title: string) => {
     if (!board) return;
     const current = board.columns.find((column) => column.id === columnId);
-    if (!current || current.title === title) {
-      return;
-    }
+    if (!current || current.title === title) return;
     const optimistic: BoardData = {
       ...board,
       columns: board.columns.map((column) =>

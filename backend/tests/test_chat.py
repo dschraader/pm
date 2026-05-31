@@ -33,10 +33,13 @@ def test_ai_chat_plain_reply_persists_history(auth_client, monkeypatch):
     assert len(data["board"]["columns"]) == 5  # board unchanged
 
     history = auth_client.get("/api/ai/chat/history").json()["messages"]
-    assert history == [
-        {"role": "user", "content": "Hi"},
-        {"role": "assistant", "content": "Hello there!"},
-    ]
+    assert len(history) == 2
+    assert history[0]["role"] == "user"
+    assert history[0]["content"] == "Hi"
+    assert history[0]["created_at"]  # populated by the DB default
+    assert history[1]["role"] == "assistant"
+    assert history[1]["content"] == "Hello there!"
+    assert history[1]["created_at"]
 
 
 def test_ai_chat_applies_single_mutation(auth_client, monkeypatch):

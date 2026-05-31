@@ -18,7 +18,7 @@ def _user_id(conn: sqlite3.Connection, username: str) -> str:
 def load_history(conn: sqlite3.Connection, username: str) -> list[ChatMessage]:
     rows = conn.execute(
         """
-        SELECT m.role, m.content
+        SELECT m.role, m.content, m.created_at
         FROM chat_messages m
         JOIN users u ON u.id = m.user_id
         WHERE u.username = ?
@@ -26,7 +26,12 @@ def load_history(conn: sqlite3.Connection, username: str) -> list[ChatMessage]:
         """,
         (username,),
     ).fetchall()
-    return [ChatMessage(role=row["role"], content=row["content"]) for row in rows]
+    return [
+        ChatMessage(
+            role=row["role"], content=row["content"], created_at=row["created_at"]
+        )
+        for row in rows
+    ]
 
 
 def append_exchange(

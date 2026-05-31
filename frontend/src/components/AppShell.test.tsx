@@ -15,15 +15,28 @@ afterEach(() => {
   vi.unstubAllGlobals();
 });
 
-const meOk = () => okResponse({ username: "user" });
 const me401 = () =>
-  ({ ok: false, status: 401, json: async () => ({ detail: "Not authenticated" }) }) as Response;
-const boardOk = () => okResponse(seedBoard);
-const logoutOk = () => okResponse({ ok: true });
+  ({
+    ok: false,
+    status: 401,
+    json: async () => ({ detail: "Not authenticated" }),
+  }) as Response;
+
+type Routes = Record<string, () => Response | Promise<Response>>;
+
+const routeMock = (routes: Routes, fallback?: () => Response) => {
+  return (input: RequestInfo | URL) => {
+    const url = typeof input === "string" ? input : input.toString();
+    const handler = routes[url];
+    if (handler) return Promise.resolve(handler());
+    if (fallback) return Promise.resolve(fallback());
+    return Promise.reject(new Error(`Unexpected fetch: ${url}`));
+  };
+};
 
 describe("AppShell", () => {
   it("shows the login form when /api/me returns 401", async () => {
-    fetchMock.mockResolvedValueOnce(me401());
+    fetchMock.mockImplementation(routeMock({ "/api/me": () => me401() }));
     render(<AppShell />);
     expect(
       await screen.findByRole("heading", { name: "Sign in" })
@@ -31,7 +44,13 @@ describe("AppShell", () => {
   });
 
   it("shows the kanban board when /api/me succeeds", async () => {
-    fetchMock.mockResolvedValueOnce(meOk()).mockResolvedValueOnce(boardOk());
+    fetchMock.mockImplementation(
+      routeMock({
+        "/api/me": () => okResponse({ username: "user" }),
+        "/api/board": () => okResponse(seedBoard),
+        "/api/ai/chat/history": () => okResponse({ messages: [] }),
+      })
+    );
     render(<AppShell />);
     expect(
       await screen.findByRole("heading", { name: "Kanban Studio" })
@@ -39,10 +58,14 @@ describe("AppShell", () => {
   });
 
   it("logout returns to the login form", async () => {
-    fetchMock
-      .mockResolvedValueOnce(meOk())
-      .mockResolvedValueOnce(boardOk())
-      .mockResolvedValueOnce(logoutOk());
+    fetchMock.mockImplementation(
+      routeMock({
+        "/api/me": () => okResponse({ username: "user" }),
+        "/api/board": () => okResponse(seedBoard),
+        "/api/ai/chat/history": () => okResponse({ messages: [] }),
+        "/api/logout": () => okResponse({ ok: true }),
+      })
+    );
     render(<AppShell />);
     await screen.findByRole("heading", { name: "Kanban Studio" });
 
