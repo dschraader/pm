@@ -13,8 +13,9 @@ In scope for this design:
 - File location, connection pragmas, and the "create if missing" approach
 
 Out of scope (deferred):
-- `chat_messages` (added in Part 9 alongside AI chat)
 - Migrations beyond initial table creation (we add Alembic later if/when the schema needs to evolve)
+
+The `chat_messages` table was added in Part 9 (`id TEXT PK`, `user_id TEXT FK -> users.id ON DELETE CASCADE`, `role TEXT CHECK in ('user','assistant')`, `content TEXT`, `created_at TEXT DEFAULT CURRENT_TIMESTAMP`) with `INDEX (user_id)`. Ordering is by SQLite's implicit `rowid` (auto-incrementing per insert) - `created_at` is only second-precision so two messages in the same turn would tie.
 
 ## Entity relationships
 

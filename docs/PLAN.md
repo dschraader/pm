@@ -189,17 +189,17 @@ Success criteria:
 Goal: Every AI call receives the current board JSON + chat history + user message, and replies via Structured Outputs containing (a) a reply string and (b) an optional set of board mutations.
 
 Substeps:
-- [ ] Define the response schema (Pydantic model) with fields like:
+- [x] Define the response schema (Pydantic model) with fields like:
   - `reply: str`
   - `mutations: list[Mutation] | None` where `Mutation` is a tagged union over `rename_column`, `create_card`, `edit_card`, `delete_card`, `move_card` matching the existing API verbs.
-- [ ] Implement `POST /api/ai/chat` that:
-  - [ ] Loads the user's board.
-  - [ ] Builds a system prompt explaining the board structure and allowed mutations.
-  - [ ] Sends board JSON + prior `messages` from the request body + new user message.
-  - [ ] Calls OpenRouter with Structured Outputs (JSON schema mode).
-  - [ ] Applies any mutations server-side via the same code path as Part 6 routes.
-  - [ ] Returns `{reply, appliedMutations, board}` (board reflects the post-mutation state).
-- [ ] Persist chat history per user (simple `chat_messages` table) so the frontend can reload conversation across sessions.
+- [x] Implement `POST /api/ai/chat` that:
+  - [x] Loads the user's board.
+  - [x] Builds a system prompt explaining the board structure and allowed mutations.
+  - [x] Sends board JSON + prior `messages` from the request body + new user message.
+  - [x] Calls OpenRouter with Structured Outputs (JSON schema mode).
+  - [x] Applies any mutations server-side via the same code path as Part 6 routes.
+  - [x] Returns `{reply, appliedMutations, board}` (board reflects the post-mutation state).
+- [x] Persist chat history per user (simple `chat_messages` table) so the frontend can reload conversation across sessions.
 
 Tests:
 - Pytest with mocked OpenRouter responses covering: plain reply (no mutations), single mutation (e.g. create a card), multiple mutations, mutation that references a missing card (must error cleanly and not partially apply - wrap in a transaction).

@@ -33,6 +33,14 @@ CREATE TABLE IF NOT EXISTS cards (
   position  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_cards_column_position ON cards(column_id, position);
+CREATE TABLE IF NOT EXISTS chat_messages (
+  id         TEXT PRIMARY KEY,
+  user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  role       TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
+  content    TEXT NOT NULL,
+  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_user ON chat_messages(user_id);
 """
 
 SEED_USER = ("user-default", "user")

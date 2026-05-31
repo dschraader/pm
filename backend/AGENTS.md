@@ -18,13 +18,20 @@ FastAPI application that will serve the API and the built Next.js frontend. Mana
   - `POST /api/board/cards/{card_id}/move` -> body `{toColumnId, toIndex}`; works within a column or across columns; `toIndex` is clamped to the target column's bounds.
   - All `board` routes require auth (401 if not signed in) and return the full updated board on success.
   - `POST /api/ai/ping` -> proves OpenRouter connectivity. Returns `{"reply": "..."}` (text from the model). 500 with `"OPENROUTER_API_KEY is not set"` if the key is missing; 502 with `"AI provider error: ..."` for any other upstream failure. Auth-required.
+  - `GET /api/ai/chat/history` -> the user's persisted conversation as `{messages: [{role, content}, ...]}`. Empty list for a fresh user. Auth-required.
+  - `POST /api/ai/chat` -> body `{message}`. Loads the user's board + prior history from the DB, calls `ai.chat`, applies all returned mutations via the same code path as the board routes (so cross-user isolation and 404s still apply), persists the new user message + assistant reply, and returns `{reply, appliedMutations, board}`. Same 500/502 error mapping as `/api/ai/ping`. All of (mutations + chat persistence) run under the same `get_db` transaction - an invalid mutation rolls back everything, including the chat history, leaving the system unchanged. Auth-required.
   - `SessionMiddleware` reads `SESSION_SECRET` env var (dev default ships with the image), cookie name `pm_session`, `same_site=lax`.
   - `lifespan` calls `db.init_db()` on startup so the DB is created and seeded before any request lands.
   - `/` (and all non-`/api` paths) -> static files from `backend/static/` via `StaticFiles(html=True)`.
 - `app/auth.py` - hardcoded `user` / `password` for the MVP, plus `current_user` FastAPI dependency that reads the session and raises 401.
 - `app/db.py` - SQLite layer: `DB_PATH` (env-driven, defaults to `/app/data/pm.db`), `connect()` (sets `foreign_keys=ON`), `get_db()` FastAPI dependency (commits on success, rolls back on exception), `init_db()` runs DDL with `IF NOT EXISTS` and seeds the default user/board on a fresh DB. See `docs/DATABASE.md` for the schema.
 - `app/board.py` - all Kanban data-access functions, scoped to a `username`. Each mutation looks up the user's board, verifies the target column/card belongs to that board (404 otherwise), then writes. `move_card` stashes the moving card at `position=-1` to keep position UPDATEs from colliding.
-- `app/ai.py` - OpenRouter client (via the `openai` SDK pointed at `https://openrouter.ai/api/v1`). Reads `OPENROUTER_API_KEY` from env and raises `AIConfigError` if missing. Model is `openai/gpt-oss-120b`. `ping()` sends a trivial prompt and returns the raw reply text - used by the `POST /api/ai/ping` smoke endpoint and (from Part 9) by the AI chat route.
+- `app/ai.py` - OpenRouter client (via the `openai` SDK pointed at `https://openrouter.ai/api/v1`). Reads `OPENROUTER_API_KEY` from env and raises `AIConfigError` if missing. Model is `openai/gpt-oss-120b`. Exposes:
+  - `ping()` - trivial prompt used by `/api/ai/ping`.
+  - `ChatMessage` and a five-variant `Mutation` discriminated union (`rename_column`, `create_card`, `edit_card`, `delete_card`, `move_card`) matching the verbs in `board.py`.
+  - `AIResponse{reply, mutations}` - the Structured Outputs response schema.
+  - `chat(board_state, history, user_message)` - builds the system prompt with the board JSON, threads in `history` + new message, calls `chat.completions.parse` with `response_format=AIResponse`, returns the parsed instance.
+- `app/chat.py` - chat history persistence: `load_history(conn, username)` returns the user's messages ordered by `rowid`; `append_exchange(conn, username, user_text, assistant_text)` inserts both rows in one transaction.
 - `app/__init__.py` - package marker.
 - `static/` - empty in the repo (only `.gitkeep`). The Dockerfile's frontend-build stage populates it with the Next.js static export at image-build time, so the container serves the real Kanban UI at `/`. Running uvicorn outside Docker against an empty `static/` will 404 on `/` - use `docker compose` instead.
 - `tests/` - pytest suite using `fastapi.testclient.TestClient`. `conftest.py` provides:
