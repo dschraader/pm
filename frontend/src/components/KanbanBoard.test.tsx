@@ -1,46 +1,177 @@
-import { render, screen, within } from "@testing-library/react";
+import { render, screen, waitFor, within } from "@testing-library/react";
 import userEvent from "@testing-library/user-event";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { KanbanBoard } from "@/components/KanbanBoard";
+import { errorResponse, okResponse, seedBoard } from "@/test/fixtures";
 
-const getFirstColumn = () => screen.getAllByTestId(/column-/i)[0];
+const fetchMock = vi.fn();
+
+beforeEach(() => {
+  fetchMock.mockReset();
+  vi.stubGlobal("fetch", fetchMock);
+});
+
+afterEach(() => {
+  vi.unstubAllGlobals();
+});
+
+const renamedBoard = (newTitle: string) => ({
+  ...seedBoard,
+  columns: seedBoard.columns.map((column) =>
+    column.id === "col-backlog" ? { ...column, title: newTitle } : column
+  ),
+});
+
+const boardWithoutCard1 = () => {
+  const remaining = Object.fromEntries(
+    Object.entries(seedBoard.cards).filter(([id]) => id !== "card-1")
+  );
+  return {
+    ...seedBoard,
+    cards: remaining,
+    columns: seedBoard.columns.map((column) =>
+      column.id === "col-backlog"
+        ? { ...column, cardIds: ["card-2"] }
+        : column
+    ),
+  };
+};
 
 describe("KanbanBoard", () => {
-  it("renders five columns", () => {
+  it("shows loading then renders columns from the API", async () => {
+    let resolveBoard: (value: Response) => void = () => {};
+    fetchMock.mockImplementationOnce(
+      () =>
+        new Promise<Response>((resolve) => {
+          resolveBoard = resolve;
+        })
+    );
+
     render(<KanbanBoard />);
-    expect(screen.getAllByTestId(/column-/i)).toHaveLength(5);
+    expect(screen.getByTestId("board-loading")).toBeInTheDocument();
+
+    resolveBoard(okResponse(seedBoard));
+    const columns = await screen.findAllByTestId(/^column-/);
+    expect(columns).toHaveLength(5);
   });
 
-  it("renames a column", async () => {
+  it("renders an error if the initial fetch fails", async () => {
+    fetchMock.mockResolvedValueOnce(errorResponse(500));
     render(<KanbanBoard />);
-    const column = getFirstColumn();
-    const input = within(column).getByLabelText("Column title");
+    expect(await screen.findByTestId("board-load-error")).toBeInTheDocument();
+  });
+
+  it("commits a column rename on blur via PUT", async () => {
+    fetchMock
+      .mockResolvedValueOnce(okResponse(seedBoard))
+      .mockResolvedValueOnce(okResponse(renamedBoard("Inbox")));
+
+    render(<KanbanBoard />);
+    await screen.findAllByTestId(/^column-/);
+
+    const backlog = screen.getByTestId("column-col-backlog");
+    const input = within(backlog).getByLabelText("Column title");
     await userEvent.clear(input);
-    await userEvent.type(input, "New Name");
-    expect(input).toHaveValue("New Name");
+    await userEvent.type(input, "Inbox");
+    await userEvent.tab();
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        "/api/board/columns/col-backlog",
+        expect.objectContaining({
+          method: "PUT",
+          body: JSON.stringify({ title: "Inbox" }),
+        })
+      );
+    });
   });
 
-  it("adds and removes a card", async () => {
+  it("reverts the column title when the rename request fails", async () => {
+    fetchMock
+      .mockResolvedValueOnce(okResponse(seedBoard))
+      .mockResolvedValueOnce(errorResponse(500));
+
     render(<KanbanBoard />);
-    const column = getFirstColumn();
-    const addButton = within(column).getByRole("button", {
-      name: /add a card/i,
+    await screen.findAllByTestId(/^column-/);
+
+    const backlog = screen.getByTestId("column-col-backlog");
+    const input = within(backlog).getByLabelText("Column title");
+    await userEvent.clear(input);
+    await userEvent.type(input, "Inbox");
+    await userEvent.tab();
+
+    await screen.findByTestId("board-mutation-error");
+    expect(input).toHaveValue("Backlog");
+  });
+
+  it("adds a card via POST and renders the server response", async () => {
+    const newId = "card-new";
+    const updated = {
+      ...seedBoard,
+      cards: {
+        ...seedBoard.cards,
+        [newId]: { id: newId, title: "Brand new", details: "Notes" },
+      },
+      columns: seedBoard.columns.map((column) =>
+        column.id === "col-backlog"
+          ? { ...column, cardIds: [...column.cardIds, newId] }
+          : column
+      ),
+    };
+    fetchMock
+      .mockResolvedValueOnce(okResponse(seedBoard))
+      .mockResolvedValueOnce(okResponse(updated));
+
+    render(<KanbanBoard />);
+    await screen.findAllByTestId(/^column-/);
+    const backlog = screen.getByTestId("column-col-backlog");
+
+    await userEvent.click(
+      within(backlog).getByRole("button", { name: /add a card/i })
+    );
+    await userEvent.type(
+      within(backlog).getByPlaceholderText("Card title"),
+      "Brand new"
+    );
+    await userEvent.type(
+      within(backlog).getByPlaceholderText("Details"),
+      "Notes"
+    );
+    await userEvent.click(
+      within(backlog).getByRole("button", { name: /add card/i })
+    );
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        "/api/board/columns/col-backlog/cards",
+        expect.objectContaining({
+          method: "POST",
+          body: JSON.stringify({ title: "Brand new", details: "Notes" }),
+        })
+      );
     });
-    await userEvent.click(addButton);
+    expect(await within(backlog).findByText("Brand new")).toBeInTheDocument();
+  });
 
-    const titleInput = within(column).getByPlaceholderText(/card title/i);
-    await userEvent.type(titleInput, "New card");
-    const detailsInput = within(column).getByPlaceholderText(/details/i);
-    await userEvent.type(detailsInput, "Notes");
+  it("deletes a card via DELETE", async () => {
+    fetchMock
+      .mockResolvedValueOnce(okResponse(seedBoard))
+      .mockResolvedValueOnce(okResponse(boardWithoutCard1()));
 
-    await userEvent.click(within(column).getByRole("button", { name: /add card/i }));
+    render(<KanbanBoard />);
+    await screen.findAllByTestId(/^column-/);
+    const backlog = screen.getByTestId("column-col-backlog");
 
-    expect(within(column).getByText("New card")).toBeInTheDocument();
+    await userEvent.click(
+      within(backlog).getByRole("button", { name: /delete align roadmap themes/i })
+    );
 
-    const deleteButton = within(column).getByRole("button", {
-      name: /delete new card/i,
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        "/api/board/cards/card-1",
+        expect.objectContaining({ method: "DELETE" })
+      );
     });
-    await userEvent.click(deleteButton);
-
-    expect(within(column).queryByText("New card")).not.toBeInTheDocument();
+    expect(within(backlog).queryByText("Align roadmap themes")).not.toBeInTheDocument();
   });
 });

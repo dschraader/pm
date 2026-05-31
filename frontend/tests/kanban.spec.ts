@@ -12,11 +12,12 @@ test("loads the kanban board", async ({ page }) => {
 
 test("adds a card to a column", async ({ page }) => {
   const firstColumn = page.locator('[data-testid^="column-"]').first();
+  const unique = `Playwright card ${Date.now()}`;
   await firstColumn.getByRole("button", { name: /add a card/i }).click();
-  await firstColumn.getByPlaceholder("Card title").fill("Playwright card");
+  await firstColumn.getByPlaceholder("Card title").fill(unique);
   await firstColumn.getByPlaceholder("Details").fill("Added via e2e.");
   await firstColumn.getByRole("button", { name: /add card/i }).click();
-  await expect(firstColumn.getByText("Playwright card")).toBeVisible();
+  await expect(firstColumn.getByText(unique)).toBeVisible();
 });
 
 test("moves a card between columns", async ({ page }) => {

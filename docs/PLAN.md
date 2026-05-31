@@ -148,10 +148,10 @@ Success criteria:
 Goal: Replace in-memory state in `KanbanBoard` with the backend API so the board is genuinely persistent.
 
 Substeps:
-- [ ] Add a small client in `frontend/src/lib/api.ts` for each endpoint.
-- [ ] Refactor `KanbanBoard` to load board from `GET /api/board` on mount; show a loading state.
-- [ ] Wire each mutation (rename column, add card, delete card, edit card, drag/drop move) to the corresponding API call with optimistic update + rollback on error.
-- [ ] Surface errors with a small inline message (no toast library; keep it simple).
+- [x] Add a small client in `frontend/src/lib/api.ts` for each endpoint.
+- [x] Refactor `KanbanBoard` to load board from `GET /api/board` on mount; show a loading state.
+- [x] Wire each mutation (rename column, add card, delete card, edit card, drag/drop move) to the corresponding API call with optimistic update + rollback on error.
+- [x] Surface errors with a small inline message (no toast library; keep it simple).
 
 Tests:
 - Vitest: mock `fetch`, verify each handler calls the right endpoint with the right payload and reverts on error.
