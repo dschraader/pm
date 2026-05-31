@@ -7,7 +7,7 @@ from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel
 from starlette.middleware.sessions import SessionMiddleware
 
-from app import board, db
+from app import ai, board, db
 from app.auth import check_credentials, current_user
 
 STATIC_DIR = Path(__file__).resolve().parent.parent / "static"
@@ -138,6 +138,19 @@ def move_card_route(
 ):
     board.move_card(conn, username, card_id, body.toColumnId, body.toIndex)
     return board.load_board(conn, username)
+
+
+@app.post("/api/ai/ping")
+def ai_ping(_username: str = Depends(current_user)) -> dict[str, str]:
+    try:
+        reply = ai.ping()
+    except ai.AIConfigError as exc:
+        raise HTTPException(status_code=500, detail=str(exc))
+    except Exception as exc:
+        raise HTTPException(
+            status_code=502, detail=f"AI provider error: {exc}"
+        )
+    return {"reply": reply}
 
 
 app.mount("/", StaticFiles(directory=STATIC_DIR, html=True), name="static")

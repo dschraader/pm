@@ -170,9 +170,9 @@ Success criteria:
 Goal: Prove OpenRouter connectivity end-to-end with a trivial prompt. No UI yet.
 
 Substeps:
-- [ ] Add an OpenRouter client to the backend (the `openai` SDK pointed at `https://openrouter.ai/api/v1` works fine), reading `OPENROUTER_API_KEY` from env, using model `openai/gpt-oss-120b`.
-- [ ] Add `POST /api/ai/ping` that sends "What is 2+2? Reply with only the number." and returns the raw text.
-- [ ] Add a tiny CLI/test script: `scripts/ai-smoke.sh` calls the endpoint and prints the response.
+- [x] Add an OpenRouter client to the backend (the `openai` SDK pointed at `https://openrouter.ai/api/v1` works fine), reading `OPENROUTER_API_KEY` from env, using model `openai/gpt-oss-120b`.
+- [x] Add `POST /api/ai/ping` that sends "What is 2+2? Reply with only the number." and returns the raw text.
+- [x] Add a tiny CLI/test script: `scripts/ai-smoke.sh` calls the endpoint and prints the response.
 
 Tests:
 - Pytest with mocked OpenRouter client: route shape and error handling (missing key returns 500 with a clear message).
