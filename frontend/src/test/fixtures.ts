@@ -1,4 +1,5 @@
 import type { BoardData } from "@/lib/kanban";
+import type { Board } from "@/lib/api";
 
 export const seedBoard: BoardData = {
   columns: [
@@ -24,8 +25,17 @@ export const seedBoard: BoardData = {
   },
 };
 
+export const seedBoardSummary: Board = {
+  id: "board-default",
+  title: "My Board",
+  created_at: "2026-01-01T00:00:00",
+};
+
 export const okResponse = (data: unknown) =>
   ({ ok: true, status: 200, json: async () => data }) as Response;
+
+export const createdResponse = (data: unknown) =>
+  ({ ok: true, status: 201, json: async () => data }) as Response;
 
 export const errorResponse = (status: number) =>
   ({

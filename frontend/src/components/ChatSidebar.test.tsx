@@ -71,7 +71,7 @@ describe("ChatSidebar", () => {
         "/api/ai/chat",
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({ message: "Move card 1 to Done" }),
+          body: JSON.stringify({ message: "Move card 1 to Done", board_id: null }),
         })
       );
     });

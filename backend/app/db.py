@@ -8,9 +8,10 @@ DB_PATH = Path(os.environ.get("PM_DB_PATH", "/app/data/pm.db"))
 
 SCHEMA_SQL = """
 CREATE TABLE IF NOT EXISTS users (
-  id         TEXT PRIMARY KEY,
-  username   TEXT NOT NULL UNIQUE,
-  created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+  id            TEXT PRIMARY KEY,
+  username      TEXT NOT NULL UNIQUE,
+  password_hash TEXT,
+  created_at    TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE TABLE IF NOT EXISTS boards (
   id         TEXT PRIMARY KEY,
@@ -87,11 +88,23 @@ def get_db() -> Iterator[sqlite3.Connection]:
         conn.close()
 
 
+def _migrate(conn: sqlite3.Connection) -> None:
+    cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+    if "password_hash" not in cols:
+        conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
+        from app.auth import hash_password  # lazy to avoid circular import at module level
+        conn.execute(
+            "UPDATE users SET password_hash = ? WHERE password_hash IS NULL",
+            (hash_password("password"),),
+        )
+
+
 def init_db() -> None:
     DB_PATH.parent.mkdir(parents=True, exist_ok=True)
     conn = connect()
     try:
         conn.executescript(SCHEMA_SQL)
+        _migrate(conn)
         existing = conn.execute("SELECT COUNT(*) FROM users").fetchone()[0]
         if existing == 0:
             _seed(conn)
@@ -101,7 +114,12 @@ def init_db() -> None:
 
 
 def _seed(conn: sqlite3.Connection) -> None:
-    conn.execute("INSERT INTO users (id, username) VALUES (?, ?)", SEED_USER)
+    from app.auth import hash_password  # lazy to avoid circular import at module level
+
+    conn.execute(
+        "INSERT INTO users (id, username, password_hash) VALUES (?, ?, ?)",
+        (SEED_USER[0], SEED_USER[1], hash_password("password")),
+    )
     conn.execute(
         "INSERT INTO boards (id, user_id, title) VALUES (?, ?, ?)", SEED_BOARD
     )

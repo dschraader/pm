@@ -17,12 +17,17 @@ import { moveCard as moveCardLocal, type BoardData } from "@/lib/kanban";
 import * as api from "@/lib/api";
 
 type KanbanBoardProps = {
+  boardId: string;
+  boardTitle: string;
   board: BoardData | null;
   setBoard: (next: BoardData) => void;
   loadError: string | null;
   mutationError: string | null;
   setMutationError: (msg: string | null) => void;
   onLogout?: () => void;
+  onRenameBoard?: (boardId: string, title: string) => void;
+  onDeleteBoard?: (boardId: string) => void;
+  canDeleteBoard?: boolean;
 };
 
 const errorMessage = (err: unknown): string => {
@@ -43,14 +48,21 @@ const findCardLocation = (board: BoardData, cardId: string) => {
 };
 
 export const KanbanBoard = ({
+  boardId,
+  boardTitle,
   board,
   setBoard,
   loadError,
   mutationError,
   setMutationError,
   onLogout,
+  onRenameBoard,
+  onDeleteBoard,
+  canDeleteBoard,
 }: KanbanBoardProps) => {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [editingBoardTitle, setEditingBoardTitle] = useState(false);
+  const [boardTitleDraft, setBoardTitleDraft] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -90,7 +102,7 @@ export const KanbanBoard = ({
     const optimistic: BoardData = { ...board, columns: nextColumns };
     const target = findCardLocation(optimistic, activeId);
     if (!target) return;
-    runMutation(optimistic, api.moveCard(activeId, target.columnId, target.index));
+    runMutation(optimistic, api.moveCard(boardId, activeId, target.columnId, target.index));
   };
 
   const handleRenameColumn = (columnId: string, title: string) => {
@@ -103,7 +115,7 @@ export const KanbanBoard = ({
         column.id === columnId ? { ...column, title } : column
       ),
     };
-    runMutation(optimistic, api.renameColumn(columnId, title));
+    runMutation(optimistic, api.renameColumn(boardId, columnId, title));
   };
 
   const handleAddCard = async (
@@ -115,6 +127,7 @@ export const KanbanBoard = ({
     setMutationError(null);
     try {
       const fromServer = await api.createCard(
+        boardId,
         columnId,
         title,
         details || "No details yet."
@@ -141,7 +154,15 @@ export const KanbanBoard = ({
           : column
       ),
     };
-    runMutation(optimistic, api.deleteCard(cardId));
+    runMutation(optimistic, api.deleteCard(boardId, cardId));
+  };
+
+  const handleBoardTitleBlur = () => {
+    const title = boardTitleDraft.trim();
+    setEditingBoardTitle(false);
+    if (title && title !== boardTitle && onRenameBoard) {
+      onRenameBoard(boardId, title);
+    }
   };
 
   const cardsById = useMemo(() => board?.cards ?? {}, [board?.cards]);
@@ -176,30 +197,51 @@ export const KanbanBoard = ({
       <div className="pointer-events-none fixed left-0 top-0 -z-10 h-[420px] w-[420px] -translate-x-1/3 -translate-y-1/3 rounded-full bg-[radial-gradient(circle,_rgba(32,157,215,0.25)_0%,_rgba(32,157,215,0.05)_55%,_transparent_70%)]" />
       <div className="pointer-events-none fixed bottom-0 right-0 -z-10 h-[520px] w-[520px] translate-x-1/4 translate-y-1/4 rounded-full bg-[radial-gradient(circle,_rgba(117,57,145,0.18)_0%,_rgba(117,57,145,0.05)_55%,_transparent_75%)]" />
 
-      <main className="relative mx-auto flex min-h-screen max-w-[1500px] flex-col gap-10 px-6 pb-16 pt-12">
+      <main className="relative mx-auto flex min-h-screen max-w-[1500px] flex-col gap-10 px-6 pb-16 pt-8">
         <header className="flex flex-col gap-6 rounded-[32px] border border-[var(--stroke)] bg-white/80 p-8 shadow-[var(--shadow)] backdrop-blur">
           <div className="flex flex-wrap items-start justify-between gap-6">
             <div>
               <p className="text-xs font-semibold uppercase tracking-[0.35em] text-[var(--gray-text)]">
-                Single Board Kanban
-              </p>
-              <h1 className="mt-3 font-display text-4xl font-semibold text-[var(--navy-dark)]">
                 Kanban Studio
-              </h1>
-              <p className="mt-3 max-w-xl text-sm leading-6 text-[var(--gray-text)]">
-                Keep momentum visible. Rename columns, drag cards between stages,
-                and capture quick notes without getting buried in settings.
               </p>
+              {editingBoardTitle ? (
+                <input
+                  autoFocus
+                  value={boardTitleDraft}
+                  onChange={(e) => setBoardTitleDraft(e.target.value)}
+                  onBlur={handleBoardTitleBlur}
+                  onKeyDown={(e) => {
+                    if (e.key === "Enter") handleBoardTitleBlur();
+                    if (e.key === "Escape") setEditingBoardTitle(false);
+                  }}
+                  className="mt-3 w-full rounded-xl border border-[var(--primary-blue)] bg-white px-3 py-1.5 font-display text-3xl font-semibold text-[var(--navy-dark)] outline-none"
+                  aria-label="Board title"
+                />
+              ) : (
+                <h1
+                  className="mt-3 cursor-text font-display text-4xl font-semibold text-[var(--navy-dark)] hover:text-[var(--primary-blue)]"
+                  role="heading"
+                  onClick={() => {
+                    setBoardTitleDraft(boardTitle);
+                    setEditingBoardTitle(true);
+                  }}
+                  title="Click to rename"
+                >
+                  {boardTitle}
+                </h1>
+              )}
             </div>
             <div className="flex items-start gap-3">
-              <div className="rounded-2xl border border-[var(--stroke)] bg-[var(--surface)] px-5 py-4">
-                <p className="text-xs font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
-                  Focus
-                </p>
-                <p className="mt-2 text-lg font-semibold text-[var(--primary-blue)]">
-                  One board. Five columns. Zero clutter.
-                </p>
-              </div>
+              {onDeleteBoard && canDeleteBoard && (
+                <button
+                  type="button"
+                  onClick={() => onDeleteBoard(boardId)}
+                  className="flex items-center gap-2 rounded-full border border-[var(--stroke)] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)] transition hover:border-red-400 hover:text-red-600"
+                  data-testid="delete-board-button"
+                >
+                  Delete board
+                </button>
+              )}
               {onLogout && (
                 <button
                   type="button"

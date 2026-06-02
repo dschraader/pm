@@ -21,6 +21,7 @@ const json = async <T>(path: string, init: RequestInit = {}): Promise<T> => {
 };
 
 export type Me = { username: string };
+export type Board = { id: string; title: string; created_at: string };
 
 export const fetchMe = () => json<Me>("/api/me");
 
@@ -30,42 +31,81 @@ export const login = (username: string, password: string) =>
     body: JSON.stringify({ username, password }),
   });
 
+export const register = (username: string, password: string) =>
+  json<Me>("/api/register", {
+    method: "POST",
+    body: JSON.stringify({ username, password }),
+  });
+
 export const logout = () =>
   json<{ ok: true }>("/api/logout", { method: "POST" });
 
-export const fetchBoard = () => json<BoardData>("/api/board");
+export const listBoards = () => json<Board[]>("/api/boards");
 
-export const renameColumn = (columnId: string, title: string) =>
-  json<BoardData>(`/api/board/columns/${encodeURIComponent(columnId)}`, {
+export const createBoard = (title: string) =>
+  json<Board>("/api/boards", {
+    method: "POST",
+    body: JSON.stringify({ title }),
+  });
+
+export const renameBoard = (boardId: string, title: string) =>
+  json<Board>(`/api/boards/${encodeURIComponent(boardId)}`, {
     method: "PUT",
     body: JSON.stringify({ title }),
   });
 
-export const createCard = (columnId: string, title: string, details: string) =>
-  json<BoardData>(
-    `/api/board/columns/${encodeURIComponent(columnId)}/cards`,
-    {
-      method: "POST",
-      body: JSON.stringify({ title, details }),
-    }
-  );
-
-export const editCard = (cardId: string, title: string, details: string) =>
-  json<BoardData>(`/api/board/cards/${encodeURIComponent(cardId)}`, {
-    method: "PUT",
-    body: JSON.stringify({ title, details }),
-  });
-
-export const deleteCard = (cardId: string) =>
-  json<BoardData>(`/api/board/cards/${encodeURIComponent(cardId)}`, {
+export const deleteBoard = (boardId: string) =>
+  json<{ ok: true }>(`/api/boards/${encodeURIComponent(boardId)}`, {
     method: "DELETE",
   });
 
-export const moveCard = (cardId: string, toColumnId: string, toIndex: number) =>
-  json<BoardData>(`/api/board/cards/${encodeURIComponent(cardId)}/move`, {
-    method: "POST",
-    body: JSON.stringify({ toColumnId, toIndex }),
-  });
+export const fetchBoard = (boardId: string) =>
+  json<BoardData>(`/api/boards/${encodeURIComponent(boardId)}`);
+
+export const renameColumn = (boardId: string, columnId: string, title: string) =>
+  json<BoardData>(
+    `/api/boards/${encodeURIComponent(boardId)}/columns/${encodeURIComponent(columnId)}`,
+    { method: "PUT", body: JSON.stringify({ title }) }
+  );
+
+export const createCard = (
+  boardId: string,
+  columnId: string,
+  title: string,
+  details: string
+) =>
+  json<BoardData>(
+    `/api/boards/${encodeURIComponent(boardId)}/columns/${encodeURIComponent(columnId)}/cards`,
+    { method: "POST", body: JSON.stringify({ title, details }) }
+  );
+
+export const editCard = (
+  boardId: string,
+  cardId: string,
+  title: string,
+  details: string
+) =>
+  json<BoardData>(
+    `/api/boards/${encodeURIComponent(boardId)}/cards/${encodeURIComponent(cardId)}`,
+    { method: "PUT", body: JSON.stringify({ title, details }) }
+  );
+
+export const deleteCard = (boardId: string, cardId: string) =>
+  json<BoardData>(
+    `/api/boards/${encodeURIComponent(boardId)}/cards/${encodeURIComponent(cardId)}`,
+    { method: "DELETE" }
+  );
+
+export const moveCard = (
+  boardId: string,
+  cardId: string,
+  toColumnId: string,
+  toIndex: number
+) =>
+  json<BoardData>(
+    `/api/boards/${encodeURIComponent(boardId)}/cards/${encodeURIComponent(cardId)}/move`,
+    { method: "POST", body: JSON.stringify({ toColumnId, toIndex }) }
+  );
 
 export type ChatMessageRecord = {
   role: "user" | "assistant";
@@ -75,25 +115,10 @@ export type ChatMessageRecord = {
 
 export type Mutation =
   | { type: "rename_column"; column_id: string; title: string }
-  | {
-      type: "create_card";
-      column_id: string;
-      title: string;
-      details: string;
-    }
-  | {
-      type: "edit_card";
-      card_id: string;
-      title: string;
-      details: string;
-    }
+  | { type: "create_card"; column_id: string; title: string; details: string }
+  | { type: "edit_card"; card_id: string; title: string; details: string }
   | { type: "delete_card"; card_id: string }
-  | {
-      type: "move_card";
-      card_id: string;
-      to_column_id: string;
-      to_index: number;
-    };
+  | { type: "move_card"; card_id: string; to_column_id: string; to_index: number };
 
 export type ChatResponse = {
   reply: string;
@@ -104,8 +129,8 @@ export type ChatResponse = {
 export const fetchChatHistory = () =>
   json<{ messages: ChatMessageRecord[] }>("/api/ai/chat/history");
 
-export const sendChatMessage = (message: string) =>
+export const sendChatMessage = (message: string, boardId?: string) =>
   json<ChatResponse>("/api/ai/chat", {
     method: "POST",
-    body: JSON.stringify({ message }),
+    body: JSON.stringify({ message, board_id: boardId ?? null }),
   });

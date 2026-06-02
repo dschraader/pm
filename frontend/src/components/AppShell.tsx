@@ -1,7 +1,17 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { ApiError, fetchBoard, fetchMe, logout as apiLogout } from "@/lib/api";
+import {
+  ApiError,
+  fetchBoard,
+  fetchMe,
+  listBoards,
+  createBoard,
+  deleteBoard,
+  renameBoard,
+  logout as apiLogout,
+} from "@/lib/api";
+import type { Board } from "@/lib/api";
 import type { BoardData } from "@/lib/kanban";
 import { RecentChangesContext } from "@/lib/highlights";
 import { ChatSidebar } from "@/components/ChatSidebar";
@@ -22,6 +32,8 @@ const errorMessage = (err: unknown): string => {
 
 export const AppShell = () => {
   const [auth, setAuth] = useState<AuthState>({ status: "loading" });
+  const [boards, setBoards] = useState<Board[]>([]);
+  const [selectedBoardId, setSelectedBoardId] = useState<string | null>(null);
   const [board, setBoard] = useState<BoardData | null>(null);
   const [loadError, setLoadError] = useState<string | null>(null);
   const [mutationError, setMutationError] = useState<string | null>(null);
@@ -29,6 +41,8 @@ export const AppShell = () => {
     new Set()
   );
   const [sidebarOpen, setSidebarOpen] = useState(true);
+  const [creatingBoard, setCreatingBoard] = useState(false);
+  const [newBoardTitle, setNewBoardTitle] = useState("");
 
   useEffect(() => {
     fetchMe()
@@ -38,8 +52,18 @@ export const AppShell = () => {
 
   useEffect(() => {
     if (auth.status !== "signed-in") return;
+    listBoards().then((data) => {
+      setBoards(data);
+      if (data.length > 0) setSelectedBoardId(data[0].id);
+    });
+  }, [auth.status]);
+
+  useEffect(() => {
+    if (!selectedBoardId) return;
     let active = true;
-    fetchBoard()
+    setBoard(null);
+    setLoadError(null);
+    fetchBoard(selectedBoardId)
       .then((data) => {
         if (active) setBoard(data);
       })
@@ -49,7 +73,7 @@ export const AppShell = () => {
     return () => {
       active = false;
     };
-  }, [auth.status]);
+  }, [selectedBoardId]);
 
   useEffect(() => {
     if (recentlyChanged.size === 0) return;
@@ -60,10 +84,58 @@ export const AppShell = () => {
   const handleLogout = useCallback(async () => {
     await apiLogout();
     setAuth({ status: "signed-out" });
+    setBoards([]);
+    setSelectedBoardId(null);
     setBoard(null);
     setLoadError(null);
     setMutationError(null);
   }, []);
+
+  const handleCreateBoard = useCallback(async () => {
+    const title = newBoardTitle.trim();
+    if (!title) return;
+    setCreatingBoard(false);
+    setNewBoardTitle("");
+    try {
+      const newBoard = await createBoard(title);
+      setBoards((prev) => [...prev, newBoard]);
+      setSelectedBoardId(newBoard.id);
+    } catch {
+      setMutationError("Failed to create board.");
+    }
+  }, [newBoardTitle]);
+
+  const handleDeleteBoard = useCallback(
+    async (boardId: string) => {
+      if (boards.length <= 1) {
+        setMutationError("You must have at least one board.");
+        return;
+      }
+      try {
+        await deleteBoard(boardId);
+        const remaining = boards.filter((b) => b.id !== boardId);
+        setBoards(remaining);
+        if (selectedBoardId === boardId) {
+          setSelectedBoardId(remaining[0]?.id ?? null);
+        }
+      } catch {
+        setMutationError("Failed to delete board.");
+      }
+    },
+    [boards, selectedBoardId]
+  );
+
+  const handleRenameBoard = useCallback(
+    async (boardId: string, title: string) => {
+      try {
+        const updated = await renameBoard(boardId, title);
+        setBoards((prev) => prev.map((b) => (b.id === boardId ? updated : b)));
+      } catch {
+        setMutationError("Failed to rename board.");
+      }
+    },
+    []
+  );
 
   if (auth.status === "loading") {
     return (
@@ -87,26 +159,105 @@ export const AppShell = () => {
   return (
     <RecentChangesContext.Provider value={recentlyChanged}>
       <div className={sidebarOpen ? "pr-[380px]" : ""}>
-        <KanbanBoard
-          board={board}
-          setBoard={setBoard}
-          loadError={loadError}
-          mutationError={mutationError}
-          setMutationError={setMutationError}
-          onLogout={handleLogout}
-        />
+        {/* Board selector bar */}
+        <div className="sticky top-0 z-20 flex items-center gap-2 border-b border-[var(--stroke)] bg-white/95 px-6 py-2 backdrop-blur">
+          <span className="mr-2 text-xs font-semibold uppercase tracking-[0.25em] text-[var(--gray-text)]">
+            Boards
+          </span>
+          <div className="flex flex-1 flex-wrap items-center gap-2">
+            {boards.map((b) => (
+              <button
+                key={b.id}
+                type="button"
+                onClick={() => setSelectedBoardId(b.id)}
+                className={`rounded-full border px-4 py-1.5 text-xs font-semibold transition ${
+                  b.id === selectedBoardId
+                    ? "border-[var(--primary-blue)] bg-[var(--primary-blue)] text-white"
+                    : "border-[var(--stroke)] bg-white text-[var(--navy-dark)] hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+                }`}
+                data-testid={`board-tab-${b.id}`}
+              >
+                {b.title}
+              </button>
+            ))}
+
+            {creatingBoard ? (
+              <form
+                className="flex items-center gap-2"
+                onSubmit={(e) => {
+                  e.preventDefault();
+                  handleCreateBoard();
+                }}
+              >
+                <input
+                  autoFocus
+                  value={newBoardTitle}
+                  onChange={(e) => setNewBoardTitle(e.target.value)}
+                  placeholder="Board name"
+                  className="rounded-xl border border-[var(--stroke)] bg-white px-3 py-1.5 text-xs text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)]"
+                  aria-label="New board name"
+                />
+                <button
+                  type="submit"
+                  disabled={!newBoardTitle.trim()}
+                  className="rounded-full bg-[var(--secondary-purple)] px-3 py-1.5 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+                >
+                  Add
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    setCreatingBoard(false);
+                    setNewBoardTitle("");
+                  }}
+                  className="rounded-full border border-[var(--stroke)] px-3 py-1.5 text-xs font-semibold text-[var(--gray-text)] transition hover:border-[var(--primary-blue)]"
+                >
+                  Cancel
+                </button>
+              </form>
+            ) : (
+              <button
+                type="button"
+                onClick={() => setCreatingBoard(true)}
+                className="rounded-full border border-dashed border-[var(--stroke)] px-4 py-1.5 text-xs font-semibold text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+                data-testid="create-board-button"
+              >
+                + New board
+              </button>
+            )}
+          </div>
+        </div>
+
+        {selectedBoardId && (
+          <KanbanBoard
+            boardId={selectedBoardId}
+            boardTitle={boards.find((b) => b.id === selectedBoardId)?.title ?? ""}
+            board={board}
+            setBoard={setBoard}
+            loadError={loadError}
+            mutationError={mutationError}
+            setMutationError={setMutationError}
+            onLogout={handleLogout}
+            onRenameBoard={handleRenameBoard}
+            onDeleteBoard={handleDeleteBoard}
+            canDeleteBoard={boards.length > 1}
+          />
+        )}
       </div>
-      <ChatSidebar
-        board={board}
-        open={sidebarOpen}
-        onOpenChange={setSidebarOpen}
-        onBoardUpdate={(next, mutationsApplied) => {
-          if (board) {
-            setRecentlyChanged(mutationsApplied(board, next));
-          }
-          setBoard(next);
-        }}
-      />
+      {selectedBoardId && (
+        <ChatSidebar
+          boardId={selectedBoardId}
+          board={board}
+          open={sidebarOpen}
+          onOpenChange={setSidebarOpen}
+          onBoardUpdate={(next, mutationsApplied) => {
+            if (board) {
+              setRecentlyChanged(mutationsApplied(board, next));
+            }
+            setBoard(next);
+          }}
+        />
+      )}
     </RecentChangesContext.Provider>
   );
 };

@@ -6,6 +6,7 @@ import { KanbanBoard } from "@/components/KanbanBoard";
 import type { BoardData } from "@/lib/kanban";
 import { errorResponse, okResponse, seedBoard } from "@/test/fixtures";
 
+const BOARD_ID = "board-default";
 const fetchMock = vi.fn();
 
 beforeEach(() => {
@@ -22,6 +23,8 @@ const Harness = ({ initialBoard }: { initialBoard: BoardData | null }) => {
   const [mutationError, setMutationError] = useState<string | null>(null);
   return (
     <KanbanBoard
+      boardId={BOARD_ID}
+      boardTitle="My Board"
       board={board}
       setBoard={setBoard}
       loadError={null}
@@ -77,7 +80,7 @@ describe("KanbanBoard", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenLastCalledWith(
-        "/api/board/columns/col-backlog",
+        `/api/boards/${BOARD_ID}/columns/col-backlog`,
         expect.objectContaining({
           method: "PUT",
           body: JSON.stringify({ title: "Inbox" }),
@@ -137,7 +140,7 @@ describe("KanbanBoard", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenLastCalledWith(
-        "/api/board/columns/col-backlog/cards",
+        `/api/boards/${BOARD_ID}/columns/col-backlog/cards`,
         expect.objectContaining({
           method: "POST",
           body: JSON.stringify({ title: "Brand new", details: "Notes" }),
@@ -159,7 +162,7 @@ describe("KanbanBoard", () => {
 
     await waitFor(() => {
       expect(fetchMock).toHaveBeenLastCalledWith(
-        "/api/board/cards/card-1",
+        `/api/boards/${BOARD_ID}/cards/card-1`,
         expect.objectContaining({ method: "DELETE" })
       );
     });

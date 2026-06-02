@@ -18,6 +18,7 @@ import { computeChangedIds } from "@/lib/highlights";
 import type { BoardData } from "@/lib/kanban";
 
 type ChatSidebarProps = {
+  boardId?: string;
   board: BoardData | null;
   open?: boolean;
   onOpenChange?: (open: boolean) => void;
@@ -42,6 +43,7 @@ const formatTime = (iso: string | null): string => {
 };
 
 export const ChatSidebar = ({
+  boardId,
   board,
   open: openProp,
   onOpenChange,
@@ -79,7 +81,7 @@ export const ChatSidebar = ({
     setMessages((prev) => [...prev, optimistic]);
     setDraft("");
     try {
-      const response = await sendChatMessage(text);
+      const response = await sendChatMessage(text, boardId);
       setMessages((prev) => [
         ...prev,
         {
