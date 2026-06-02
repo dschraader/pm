@@ -8,6 +8,7 @@ import { RecentChangesContext } from "@/lib/highlights";
 type KanbanCardProps = {
   card: Card;
   onDelete: (cardId: string) => void;
+  onEdit: (cardId: string) => void;
 };
 
 const TrashIcon = () => (
@@ -29,7 +30,25 @@ const TrashIcon = () => (
   </svg>
 );
 
-export const KanbanCard = ({ card, onDelete }: KanbanCardProps) => {
+const PencilIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7" />
+    <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z" />
+  </svg>
+);
+
+export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id });
   const recent = useContext(RecentChangesContext);
@@ -64,17 +83,30 @@ export const KanbanCard = ({ card, onDelete }: KanbanCardProps) => {
             {card.details}
           </p>
         </div>
-        <button
-          type="button"
-          onClick={(e) => {
-            e.stopPropagation();
-            onDelete(card.id);
-          }}
-          className="shrink-0 rounded-full p-1.5 text-[var(--gray-text)] opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover:opacity-100"
-          aria-label={`Delete ${card.title}`}
-        >
-          <TrashIcon />
-        </button>
+        <div className="flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100">
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onEdit(card.id);
+            }}
+            className="rounded-full p-1.5 text-[var(--gray-text)] transition hover:bg-blue-50 hover:text-[var(--primary-blue)]"
+            aria-label={`Edit ${card.title}`}
+          >
+            <PencilIcon />
+          </button>
+          <button
+            type="button"
+            onClick={(e) => {
+              e.stopPropagation();
+              onDelete(card.id);
+            }}
+            className="rounded-full p-1.5 text-[var(--gray-text)] transition hover:bg-red-50 hover:text-red-500"
+            aria-label={`Delete ${card.title}`}
+          >
+            <TrashIcon />
+          </button>
+        </div>
       </div>
     </article>
   );

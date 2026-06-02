@@ -15,8 +15,16 @@ export const computeChangedIds = (
   for (const m of mutations) {
     switch (m.type) {
       case "rename_column":
+      case "delete_column":
         ids.add(m.column_id);
         break;
+      case "add_column": {
+        const beforeColIds = new Set(before.columns.map((c) => c.id));
+        for (const col of after.columns) {
+          if (!beforeColIds.has(col.id)) ids.add(col.id);
+        }
+        break;
+      }
       case "edit_card":
       case "move_card":
       case "delete_card":

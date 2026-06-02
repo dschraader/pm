@@ -1,11 +1,15 @@
 ---
 active: true
-iteration: 3
+iteration: 4
 session_id: 4a0b3fde-3b3f-48a2-ac9a-3b18f223e2d8
 max_iterations: 5
 completion_promise: null
 started_at: "2026-06-02T17:57:35Z"
 ---
+
+## Iteration 2 completed
+
+Column management (add/delete), chat history per board, DB migration for board_id in chat_messages, top bar redesign (username + logout), Playwright tests fixed + new e2e tests. 71 backend + 29 frontend tests green.
 
 ## Iteration 1 completed
 

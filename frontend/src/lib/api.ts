@@ -127,6 +127,8 @@ export type ChatMessageRecord = {
 
 export type Mutation =
   | { type: "rename_column"; column_id: string; title: string }
+  | { type: "add_column"; title: string }
+  | { type: "delete_column"; column_id: string }
   | { type: "create_card"; column_id: string; title: string; details: string }
   | { type: "edit_card"; card_id: string; title: string; details: string }
   | { type: "delete_card"; card_id: string }

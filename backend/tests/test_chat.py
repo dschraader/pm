@@ -149,6 +149,46 @@ def test_ai_chat_sees_board_and_prior_history(auth_client, monkeypatch):
     assert captured["message"] == "second"
 
 
+def test_ai_chat_add_column_mutation(auth_client, monkeypatch):
+    from app import ai as ai_module
+
+    def fake_chat(board_state, history, message):
+        return ai_module.AIResponse(
+            reply="Added column.",
+            mutations=[ai_module.AddColumnMutation(type="add_column", title="Archived")],
+        )
+
+    monkeypatch.setattr(ai, "chat", fake_chat)
+    response = auth_client.post("/api/ai/chat", json={"message": "add a column"})
+    assert response.status_code == 200
+    data = response.json()
+    col_titles = [c["title"] for c in data["board"]["columns"]]
+    assert "Archived" in col_titles
+    assert len(col_titles) == 6
+
+
+def test_ai_chat_delete_column_mutation(auth_client, monkeypatch):
+    from app import ai as ai_module
+
+    def fake_chat(board_state, history, message):
+        return ai_module.AIResponse(
+            reply="Deleted column.",
+            mutations=[
+                ai_module.DeleteColumnMutation(
+                    type="delete_column", column_id="col-backlog"
+                )
+            ],
+        )
+
+    monkeypatch.setattr(ai, "chat", fake_chat)
+    response = auth_client.post("/api/ai/chat", json={"message": "remove backlog"})
+    assert response.status_code == 200
+    data = response.json()
+    col_ids = [c["id"] for c in data["board"]["columns"]]
+    assert "col-backlog" not in col_ids
+    assert len(col_ids) == 4
+
+
 def test_ai_chat_missing_api_key_returns_500(auth_client, monkeypatch):
     def fake_chat(board_state, history, message):
         raise ai.AIConfigError("OPENROUTER_API_KEY is not set")

@@ -52,12 +52,24 @@ class MoveCardMutation(BaseModel):
     to_index: int
 
 
+class AddColumnMutation(BaseModel):
+    type: Literal["add_column"]
+    title: str = Field(min_length=1)
+
+
+class DeleteColumnMutation(BaseModel):
+    type: Literal["delete_column"]
+    column_id: str
+
+
 Mutation = Annotated[
     RenameColumnMutation
     | CreateCardMutation
     | EditCardMutation
     | DeleteCardMutation
-    | MoveCardMutation,
+    | MoveCardMutation
+    | AddColumnMutation
+    | DeleteColumnMutation,
     Field(discriminator="type"),
 ]
 
@@ -74,20 +86,21 @@ The current board state (JSON):
 {board_json}
 
 You can issue zero or more mutations on the board:
-- rename_column: change a column's title.
-- create_card: add a new card to a column (the server assigns the card id).
-- edit_card: change a card's title and details.
-- delete_card: remove a card.
-- move_card: move a card to a column at an index (0-based; an index past the end
-  pins the card to the end of the target column).
+- rename_column: change a column's title (provide column_id and title).
+- add_column: add a new column at the end of the board (provide title).
+- delete_column: remove a column and all its cards (provide column_id).
+- create_card: add a new card to a column (provide column_id, title, details).
+- edit_card: change a card's title and details (provide card_id, title, details).
+- delete_card: remove a card (provide card_id).
+- move_card: move a card to a column at an index, 0-based; an index past the end
+  pins the card to the end of the target column (provide card_id, to_column_id, to_index).
 
 Use mutations only when the user explicitly asks for board changes. For
 questions or discussion, return an empty `mutations` list and put your answer
 in `reply`.
 
 Always refer to existing columns and cards by the IDs shown in the board state.
-Do not invent IDs - the server creates new card IDs for you when you use
-`create_card`.
+Do not invent IDs - the server creates new card and column IDs for you.
 """
 
 

@@ -150,6 +150,53 @@ describe("KanbanBoard", () => {
     expect(await within(backlog).findByText("Brand new")).toBeInTheDocument();
   });
 
+  it("opens the edit modal when the pencil button is clicked", async () => {
+    render(<Harness initialBoard={seedBoard} />);
+    const backlog = screen.getByTestId("column-col-backlog");
+    const card1 = within(backlog).getByTestId("card-card-1");
+
+    await userEvent.hover(card1);
+    await userEvent.click(within(card1).getByRole("button", { name: /edit align roadmap themes/i }));
+
+    expect(screen.getByRole("dialog", { name: "Edit card" })).toBeInTheDocument();
+    expect(screen.getByLabelText("Card title")).toHaveValue("Align roadmap themes");
+  });
+
+  it("saves card edits via PUT and closes the modal", async () => {
+    const updated: BoardData = {
+      ...seedBoard,
+      cards: {
+        ...seedBoard.cards,
+        "card-1": { id: "card-1", title: "Updated title", details: "New details" },
+      },
+    };
+    fetchMock.mockResolvedValueOnce(okResponse(updated));
+
+    render(<Harness initialBoard={seedBoard} />);
+    const backlog = screen.getByTestId("column-col-backlog");
+    const card1 = within(backlog).getByTestId("card-card-1");
+
+    await userEvent.hover(card1);
+    await userEvent.click(within(card1).getByRole("button", { name: /edit align roadmap themes/i }));
+
+    const titleInput = screen.getByLabelText("Card title");
+    await userEvent.clear(titleInput);
+    await userEvent.type(titleInput, "Updated title");
+    await userEvent.click(screen.getByRole("button", { name: /^save$/i }));
+
+    await waitFor(() => {
+      expect(fetchMock).toHaveBeenLastCalledWith(
+        `/api/boards/${BOARD_ID}/cards/card-1`,
+        expect.objectContaining({
+          method: "PUT",
+          body: JSON.stringify({ title: "Updated title", details: "..." }),
+        })
+      );
+    });
+    expect(screen.queryByRole("dialog", { name: "Edit card" })).not.toBeInTheDocument();
+    expect(await within(backlog).findByText("Updated title")).toBeInTheDocument();
+  });
+
   it("deletes a card via DELETE", async () => {
     fetchMock.mockResolvedValueOnce(okResponse(boardWithoutCard1()));
 

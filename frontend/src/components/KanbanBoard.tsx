@@ -13,7 +13,8 @@ import {
 } from "@dnd-kit/core";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
-import { moveCard as moveCardLocal, type BoardData } from "@/lib/kanban";
+import { CardEditModal } from "@/components/CardEditModal";
+import { moveCard as moveCardLocal, type BoardData, type Card } from "@/lib/kanban";
 import * as api from "@/lib/api";
 
 type KanbanBoardProps = {
@@ -65,6 +66,7 @@ export const KanbanBoard = ({
   const [boardTitleDraft, setBoardTitleDraft] = useState("");
   const [addingColumn, setAddingColumn] = useState(false);
   const [newColumnTitle, setNewColumnTitle] = useState("");
+  const [editingCard, setEditingCard] = useState<Card | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -188,6 +190,31 @@ export const KanbanBoard = ({
     };
     runMutation(optimistic, api.deleteCard(boardId, cardId));
   };
+
+  const handleOpenEditCard = useCallback(
+    (cardId: string) => {
+      if (!board) return;
+      const card = board.cards[cardId];
+      if (card) setEditingCard(card);
+    },
+    [board]
+  );
+
+  const handleSaveCard = useCallback(
+    (cardId: string, title: string, details: string) => {
+      if (!board) return;
+      setEditingCard(null);
+      const optimistic: BoardData = {
+        ...board,
+        cards: {
+          ...board.cards,
+          [cardId]: { ...board.cards[cardId], title, details },
+        },
+      };
+      runMutation(optimistic, api.editCard(boardId, cardId, title, details));
+    },
+    [board, boardId, runMutation]
+  );
 
   const handleBoardTitleBlur = () => {
     const title = boardTitleDraft.trim();
@@ -319,6 +346,7 @@ export const KanbanBoard = ({
                   onRename={handleRenameColumn}
                   onAddCard={handleAddCard}
                   onDeleteCard={handleDeleteCard}
+                  onEditCard={handleOpenEditCard}
                   onDeleteColumn={handleDeleteColumn}
                 />
               ))}
@@ -381,6 +409,14 @@ export const KanbanBoard = ({
           </DragOverlay>
         </DndContext>
       </main>
+
+      {editingCard && (
+        <CardEditModal
+          card={editingCard}
+          onSave={handleSaveCard}
+          onClose={() => setEditingCard(null)}
+        />
+      )}
     </div>
   );
 };

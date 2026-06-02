@@ -317,6 +317,12 @@ class ChatRequest(BaseModel):
 def _apply_mutation(conn, username: str, mutation, board_id: str | None) -> None:
     if isinstance(mutation, ai.RenameColumnMutation):
         board.rename_column(conn, username, mutation.column_id, mutation.title, board_id)
+    elif isinstance(mutation, ai.AddColumnMutation):
+        actual_board_id = board_id or board._board_id_for_user(conn, username)
+        board.add_column(conn, username, actual_board_id, mutation.title)
+    elif isinstance(mutation, ai.DeleteColumnMutation):
+        actual_board_id = board_id or board._board_id_for_user(conn, username)
+        board.delete_column(conn, username, actual_board_id, mutation.column_id)
     elif isinstance(mutation, ai.CreateCardMutation):
         board.create_card(
             conn, username, mutation.column_id, mutation.title, mutation.details, board_id

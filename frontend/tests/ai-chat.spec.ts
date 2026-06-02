@@ -1,11 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { signIn } from "./helpers";
+import { signIn, waitForBoard } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await signIn(page);
-  await expect(
-    page.getByRole("heading", { name: "Kanban Studio" })
-  ).toBeVisible();
+  await waitForBoard(page);
+  await expect(page.getByRole("heading", { name: "My Board" })).toBeVisible();
 });
 
 test("sidebar renders empty state and accepts a chat turn that moves a card", async ({
