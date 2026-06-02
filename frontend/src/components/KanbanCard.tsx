@@ -48,6 +48,21 @@ const PencilIcon = () => (
   </svg>
 );
 
+const formatDueDate = (iso: string): { label: string; overdue: boolean } => {
+  const due = new Date(iso + "T00:00:00");
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const diff = Math.round((due.getTime() - today.getTime()) / 86_400_000);
+  const overdue = diff < 0;
+  let label: string;
+  if (diff === 0) label = "Due today";
+  else if (diff === 1) label = "Due tomorrow";
+  else if (diff === -1) label = "Due yesterday";
+  else if (diff > 0) label = `Due in ${diff}d`;
+  else label = `${-diff}d overdue`;
+  return { label, overdue };
+};
+
 export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
   const { attributes, listeners, setNodeRef, transform, transition, isDragging } =
     useSortable({ id: card.id });
@@ -82,6 +97,21 @@ export const KanbanCard = ({ card, onDelete, onEdit }: KanbanCardProps) => {
           <p className="mt-2 text-sm leading-6 text-[var(--gray-text)]">
             {card.details}
           </p>
+          {card.due_date && (() => {
+            const { label, overdue } = formatDueDate(card.due_date);
+            return (
+              <span
+                className={clsx(
+                  "mt-2 inline-block rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-[0.15em]",
+                  overdue
+                    ? "bg-red-50 text-red-600"
+                    : "bg-[var(--surface)] text-[var(--gray-text)]"
+                )}
+              >
+                {label}
+              </span>
+            );
+          })()}
         </div>
         <div className="flex shrink-0 items-center gap-1 opacity-0 transition group-hover:opacity-100">
           <button

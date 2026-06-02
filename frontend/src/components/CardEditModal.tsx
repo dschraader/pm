@@ -5,13 +5,14 @@ import type { Card } from "@/lib/kanban";
 
 type CardEditModalProps = {
   card: Card;
-  onSave: (cardId: string, title: string, details: string) => void;
+  onSave: (cardId: string, title: string, details: string, dueDate: string | null) => void;
   onClose: () => void;
 };
 
 export const CardEditModal = ({ card, onSave, onClose }: CardEditModalProps) => {
   const [title, setTitle] = useState(card.title);
   const [details, setDetails] = useState(card.details);
+  const [dueDate, setDueDate] = useState(card.due_date ?? "");
   const titleRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
@@ -30,7 +31,7 @@ export const CardEditModal = ({ card, onSave, onClose }: CardEditModalProps) => 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     if (!title.trim()) return;
-    onSave(card.id, title.trim(), details.trim());
+    onSave(card.id, title.trim(), details.trim(), dueDate || null);
   };
 
   return (
@@ -75,6 +76,18 @@ export const CardEditModal = ({ card, onSave, onClose }: CardEditModalProps) => 
               rows={5}
               className="mt-2 w-full resize-none rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm text-[var(--gray-text)] outline-none transition focus:border-[var(--primary-blue)]"
               aria-label="Card details"
+            />
+          </label>
+          <label className="block">
+            <span className="text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)]">
+              Due date
+            </span>
+            <input
+              type="date"
+              value={dueDate}
+              onChange={(e) => setDueDate(e.target.value)}
+              className="mt-2 w-full rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)]"
+              aria-label="Due date"
             />
           </label>
           <div className="flex items-center gap-3 pt-2">

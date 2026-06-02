@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS cards (
   column_id TEXT NOT NULL REFERENCES columns(id) ON DELETE CASCADE,
   title     TEXT NOT NULL,
   details   TEXT NOT NULL DEFAULT '',
+  due_date  TEXT DEFAULT NULL,
   position  INTEGER NOT NULL
 );
 CREATE INDEX IF NOT EXISTS idx_cards_column_position ON cards(column_id, position);
@@ -103,6 +104,10 @@ def _migrate(conn: sqlite3.Connection) -> None:
     msg_cols = {row[1] for row in conn.execute("PRAGMA table_info(chat_messages)").fetchall()}
     if "board_id" not in msg_cols:
         conn.execute("ALTER TABLE chat_messages ADD COLUMN board_id TEXT REFERENCES boards(id) ON DELETE CASCADE")
+
+    card_cols = {row[1] for row in conn.execute("PRAGMA table_info(cards)").fetchall()}
+    if "due_date" not in card_cols:
+        conn.execute("ALTER TABLE cards ADD COLUMN due_date TEXT DEFAULT NULL")
 
 
 def init_db() -> None:

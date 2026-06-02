@@ -143,7 +143,7 @@ describe("KanbanBoard", () => {
         `/api/boards/${BOARD_ID}/columns/col-backlog/cards`,
         expect.objectContaining({
           method: "POST",
-          body: JSON.stringify({ title: "Brand new", details: "Notes" }),
+          body: JSON.stringify({ title: "Brand new", details: "Notes", due_date: null }),
         })
       );
     });
@@ -189,7 +189,7 @@ describe("KanbanBoard", () => {
         `/api/boards/${BOARD_ID}/cards/card-1`,
         expect.objectContaining({
           method: "PUT",
-          body: JSON.stringify({ title: "Updated title", details: "..." }),
+          body: JSON.stringify({ title: "Updated title", details: "...", due_date: null }),
         })
       );
     });

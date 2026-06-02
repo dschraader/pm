@@ -57,14 +57,20 @@ class RenameColumnRequest(BaseModel):
     title: str = Field(min_length=1)
 
 
+class ReorderColumnsRequest(BaseModel):
+    column_ids: list[str]
+
+
 class CreateCardRequest(BaseModel):
     title: str = Field(min_length=1)
     details: str = ""
+    due_date: str | None = None
 
 
 class EditCardRequest(BaseModel):
     title: str = Field(min_length=1)
     details: str = ""
+    due_date: str | None = None
 
 
 class MoveCardRequest(BaseModel):
@@ -151,6 +157,17 @@ def rename_board_route(
     return board.rename_board(conn, username, board_id, body.title)
 
 
+@app.patch("/api/boards/{board_id}/columns/reorder")
+def reorder_columns_route(
+    board_id: str,
+    body: ReorderColumnsRequest,
+    username: str = Depends(current_user),
+    conn=Depends(db.get_db),
+):
+    board.reorder_columns(conn, username, board_id, body.column_ids)
+    return board.load_board(conn, username, board_id)
+
+
 @app.post("/api/boards/{board_id}/columns")
 def add_column_route(
     board_id: str,
@@ -193,7 +210,7 @@ def create_card_v2(
     username: str = Depends(current_user),
     conn=Depends(db.get_db),
 ):
-    board.create_card(conn, username, column_id, body.title, body.details, board_id)
+    board.create_card(conn, username, column_id, body.title, body.details, board_id, body.due_date)
     return board.load_board(conn, username, board_id)
 
 
@@ -205,7 +222,7 @@ def edit_card_v2(
     username: str = Depends(current_user),
     conn=Depends(db.get_db),
 ):
-    board.edit_card(conn, username, card_id, body.title, body.details, board_id)
+    board.edit_card(conn, username, card_id, body.title, body.details, board_id, body.due_date)
     return board.load_board(conn, username, board_id)
 
 
@@ -260,7 +277,7 @@ def create_card_route(
     username: str = Depends(current_user),
     conn=Depends(db.get_db),
 ):
-    board.create_card(conn, username, column_id, body.title, body.details)
+    board.create_card(conn, username, column_id, body.title, body.details, due_date=body.due_date)
     return board.load_board(conn, username)
 
 
@@ -271,7 +288,7 @@ def edit_card_route(
     username: str = Depends(current_user),
     conn=Depends(db.get_db),
 ):
-    board.edit_card(conn, username, card_id, body.title, body.details)
+    board.edit_card(conn, username, card_id, body.title, body.details, due_date=body.due_date)
     return board.load_board(conn, username)
 
 

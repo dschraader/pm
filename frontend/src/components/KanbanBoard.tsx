@@ -11,6 +11,7 @@ import {
   type DragEndEvent,
   type DragStartEvent,
 } from "@dnd-kit/core";
+import { SortableContext, arrayMove, horizontalListSortingStrategy } from "@dnd-kit/sortable";
 import { KanbanColumn } from "@/components/KanbanColumn";
 import { KanbanCardPreview } from "@/components/KanbanCardPreview";
 import { CardEditModal } from "@/components/CardEditModal";
@@ -62,6 +63,7 @@ export const KanbanBoard = ({
   onAddColumn,
 }: KanbanBoardProps) => {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
+  const [activeColumnId, setActiveColumnId] = useState<string | null>(null);
   const [editingBoardTitle, setEditingBoardTitle] = useState(false);
   const [boardTitleDraft, setBoardTitleDraft] = useState("");
   const [addingColumn, setAddingColumn] = useState(false);
@@ -91,16 +93,40 @@ export const KanbanBoard = ({
     [board, setBoard, setMutationError]
   );
 
+  const columnIds = useMemo(
+    () => board?.columns.map((c) => c.id) ?? [],
+    [board?.columns]
+  );
+
   const handleDragStart = (event: DragStartEvent) => {
-    setActiveCardId(event.active.id as string);
+    const id = event.active.id as string;
+    if (columnIds.includes(id)) {
+      setActiveColumnId(id);
+    } else {
+      setActiveCardId(id);
+    }
   };
 
   const handleDragEnd = (event: DragEndEvent) => {
     const { active, over } = event;
     setActiveCardId(null);
+    setActiveColumnId(null);
     if (!board || !over || active.id === over.id) return;
     const activeId = active.id as string;
     const overId = over.id as string;
+
+    if (columnIds.includes(activeId)) {
+      // Column reorder
+      const fromIndex = board.columns.findIndex((c) => c.id === activeId);
+      const toIndex = board.columns.findIndex((c) => c.id === overId);
+      if (fromIndex === -1 || toIndex === -1) return;
+      const reordered = arrayMove(board.columns, fromIndex, toIndex);
+      const optimistic: BoardData = { ...board, columns: reordered };
+      runMutation(optimistic, api.reorderColumns(boardId, reordered.map((c) => c.id)));
+      return;
+    }
+
+    // Card move
     const nextColumns = moveCardLocal(board.columns, activeId, overId);
     if (nextColumns === board.columns) return;
     const optimistic: BoardData = { ...board, columns: nextColumns };
@@ -201,17 +227,17 @@ export const KanbanBoard = ({
   );
 
   const handleSaveCard = useCallback(
-    (cardId: string, title: string, details: string) => {
+    (cardId: string, title: string, details: string, dueDate: string | null) => {
       if (!board) return;
       setEditingCard(null);
       const optimistic: BoardData = {
         ...board,
         cards: {
           ...board.cards,
-          [cardId]: { ...board.cards[cardId], title, details },
+          [cardId]: { ...board.cards[cardId], title, details, due_date: dueDate },
         },
       };
-      runMutation(optimistic, api.editCard(boardId, cardId, title, details));
+      runMutation(optimistic, api.editCard(boardId, cardId, title, details, dueDate));
     },
     [board, boardId, runMutation]
   );
@@ -335,6 +361,7 @@ export const KanbanBoard = ({
           onDragEnd={handleDragEnd}
         >
           <div className="-mx-6 overflow-x-auto px-6 pb-2">
+            <SortableContext items={columnIds} strategy={horizontalListSortingStrategy}>
             <section className="flex gap-5" style={{ minWidth: "max-content" }}>
               {board.columns.map((column) => (
                 <KanbanColumn
@@ -401,10 +428,17 @@ export const KanbanBoard = ({
                 </button>
               )}
             </section>
+            </SortableContext>
           </div>
           <DragOverlay>
             {activeCard ? (
               <KanbanCardPreview card={activeCard} />
+            ) : activeColumnId ? (
+              <div className="w-[272px] rounded-3xl border-2 border-[var(--primary-blue)] bg-[var(--surface-strong)] p-4 opacity-75 shadow-[var(--shadow)]">
+                <p className="font-display text-base font-semibold text-[var(--navy-dark)]">
+                  {board?.columns.find((c) => c.id === activeColumnId)?.title ?? ""}
+                </p>
+              </div>
             ) : null}
           </DragOverlay>
         </DndContext>

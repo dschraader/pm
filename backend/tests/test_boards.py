@@ -165,6 +165,68 @@ def test_delete_column_not_found(auth_client):
     assert auth_client.delete("/api/boards/board-default/columns/col-missing").status_code == 404
 
 
+def test_reorder_columns(auth_client):
+    original_order = ["col-backlog", "col-discovery", "col-progress", "col-review", "col-done"]
+    new_order = ["col-done", "col-backlog", "col-discovery", "col-progress", "col-review"]
+    response = auth_client.patch(
+        "/api/boards/board-default/columns/reorder",
+        json={"column_ids": new_order},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    assert [c["id"] for c in data["columns"]] == new_order
+
+    # Verify persisted
+    assert [c["id"] for c in auth_client.get("/api/boards/board-default").json()["columns"]] == new_order
+    _ = original_order  # used for readability above
+
+
+def test_reorder_columns_wrong_set_returns_400(auth_client):
+    response = auth_client.patch(
+        "/api/boards/board-default/columns/reorder",
+        json={"column_ids": ["col-backlog", "col-discovery"]},
+    )
+    assert response.status_code == 400
+
+
+def test_create_card_with_due_date(auth_client):
+    response = auth_client.post(
+        "/api/boards/board-default/columns/col-backlog/cards",
+        json={"title": "Dated card", "details": "Details", "due_date": "2026-12-31"},
+    )
+    assert response.status_code == 200
+    data = response.json()
+    col = next(c for c in data["columns"] if c["id"] == "col-backlog")
+    new_card_id = col["cardIds"][-1]
+    assert data["cards"][new_card_id]["due_date"] == "2026-12-31"
+
+
+def test_edit_card_updates_due_date(auth_client):
+    response = auth_client.put(
+        "/api/boards/board-default/cards/card-1",
+        json={"title": "Updated", "details": "d", "due_date": "2026-06-15"},
+    )
+    assert response.status_code == 200
+    assert response.json()["cards"]["card-1"]["due_date"] == "2026-06-15"
+
+
+def test_edit_card_clears_due_date(auth_client):
+    auth_client.put(
+        "/api/boards/board-default/cards/card-1",
+        json={"title": "Title", "details": "d", "due_date": "2026-06-15"},
+    )
+    response = auth_client.put(
+        "/api/boards/board-default/cards/card-1",
+        json={"title": "Title", "details": "d", "due_date": None},
+    )
+    assert response.json()["cards"]["card-1"]["due_date"] is None
+
+
+def test_seed_cards_have_null_due_date(auth_client):
+    data = auth_client.get("/api/boards/board-default").json()
+    assert data["cards"]["card-1"]["due_date"] is None
+
+
 def test_cross_user_board_isolation(client):
     client.post("/api/register", json={"username": "user2", "password": "password123"})
     client.post("/api/login", json={"username": "user2", "password": "password123"})

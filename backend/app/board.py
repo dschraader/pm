@@ -147,7 +147,7 @@ def load_board(
     ).fetchall()
     card_rows = conn.execute(
         """
-        SELECT c.id, c.column_id, c.title, c.details
+        SELECT c.id, c.column_id, c.title, c.details, c.due_date
         FROM cards c
         JOIN columns col ON col.id = c.column_id
         WHERE col.board_id = ?
@@ -156,13 +156,14 @@ def load_board(
         (actual_board_id,),
     ).fetchall()
 
-    cards: dict[str, dict[str, str]] = {}
+    cards: dict[str, dict[str, Any]] = {}
     cards_by_column: dict[str, list[str]] = {}
     for row in card_rows:
         cards[row["id"]] = {
             "id": row["id"],
             "title": row["title"],
             "details": row["details"],
+            "due_date": row["due_date"],
         }
         cards_by_column.setdefault(row["column_id"], []).append(row["id"])
 
@@ -191,6 +192,25 @@ def rename_column(
     conn.execute("UPDATE columns SET title = ? WHERE id = ?", (new_title, column_id))
 
 
+def reorder_columns(
+    conn: sqlite3.Connection, username: str, board_id: str, column_ids: list[str]
+) -> None:
+    actual = _get_board_id(conn, username, board_id)
+    existing = {
+        row["id"]
+        for row in conn.execute(
+            "SELECT id FROM columns WHERE board_id = ?", (actual,)
+        ).fetchall()
+    }
+    if set(column_ids) != existing:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="column_ids must be exactly the board's current columns",
+        )
+    for i, col_id in enumerate(column_ids):
+        conn.execute("UPDATE columns SET position = ? WHERE id = ?", (i, col_id))
+
+
 def create_card(
     conn: sqlite3.Connection,
     username: str,
@@ -198,6 +218,7 @@ def create_card(
     title: str,
     details: str,
     board_id: str | None = None,
+    due_date: str | None = None,
 ) -> str:
     actual_board_id = _get_board_id(conn, username, board_id)
     _assert_column_in_board(conn, actual_board_id, column_id)
@@ -206,8 +227,8 @@ def create_card(
     ).fetchone()[0]
     card_id = new_id("card")
     conn.execute(
-        "INSERT INTO cards (id, column_id, title, details, position) VALUES (?, ?, ?, ?, ?)",
-        (card_id, column_id, title, details, position),
+        "INSERT INTO cards (id, column_id, title, details, due_date, position) VALUES (?, ?, ?, ?, ?, ?)",
+        (card_id, column_id, title, details, due_date, position),
     )
     return card_id
 
@@ -219,12 +240,13 @@ def edit_card(
     title: str,
     details: str,
     board_id: str | None = None,
+    due_date: str | None = None,
 ) -> None:
     actual_board_id = _get_board_id(conn, username, board_id)
     _card_in_board(conn, actual_board_id, card_id)
     conn.execute(
-        "UPDATE cards SET title = ?, details = ? WHERE id = ?",
-        (title, details, card_id),
+        "UPDATE cards SET title = ?, details = ?, due_date = ? WHERE id = ?",
+        (title, details, due_date, card_id),
     )
 
 

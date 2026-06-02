@@ -1,11 +1,15 @@
 ---
 active: true
-iteration: 4
+iteration: 5
 session_id: 4a0b3fde-3b3f-48a2-ac9a-3b18f223e2d8
 max_iterations: 5
 completion_promise: null
 started_at: "2026-06-02T17:57:35Z"
 ---
+
+## Iteration 3 completed
+
+Card edit modal (pencil icon hover → edit title/details), AI add_column/delete_column mutations with updated system prompt, highlights for new mutation types, ai-chat.spec.ts heading fixed. 73 backend + 31 frontend tests green.
 
 ## Iteration 2 completed
 

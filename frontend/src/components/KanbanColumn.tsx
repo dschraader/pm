@@ -2,7 +2,8 @@
 
 import { useContext, useEffect, useState } from "react";
 import clsx from "clsx";
-import { useDroppable } from "@dnd-kit/core";
+import { useSortable } from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
 import { SortableContext, verticalListSortingStrategy } from "@dnd-kit/sortable";
 import type { Card, Column } from "@/lib/kanban";
 import { RecentChangesContext } from "@/lib/highlights";
@@ -38,6 +39,28 @@ const TrashIcon = () => (
   </svg>
 );
 
+const GripIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="14"
+    height="14"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <circle cx="9" cy="5" r="1" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="12" r="1" fill="currentColor" stroke="none" />
+    <circle cx="9" cy="19" r="1" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="5" r="1" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="12" r="1" fill="currentColor" stroke="none" />
+    <circle cx="15" cy="19" r="1" fill="currentColor" stroke="none" />
+  </svg>
+);
+
 export const KanbanColumn = ({
   column,
   cards,
@@ -47,7 +70,14 @@ export const KanbanColumn = ({
   onEditCard,
   onDeleteColumn,
 }: KanbanColumnProps) => {
-  const { setNodeRef, isOver } = useDroppable({ id: column.id });
+  const {
+    setNodeRef,
+    attributes,
+    listeners,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: column.id });
   const [draftTitle, setDraftTitle] = useState(column.title);
   const recent = useContext(RecentChangesContext);
   const isRecent = recent.has(column.id);
@@ -65,18 +95,36 @@ export const KanbanColumn = ({
     onRename(column.id, trimmed);
   };
 
+  const style = {
+    transform: CSS.Translate.toString(transform),
+    transition,
+  };
+
   return (
     <section
       ref={setNodeRef}
+      style={style}
       className={clsx(
         "flex w-[272px] shrink-0 flex-col rounded-3xl border border-[var(--stroke)] bg-[var(--surface-strong)] p-4 shadow-[var(--shadow)] transition",
-        (isOver || isRecent) && "ring-2 ring-[var(--accent-yellow)]"
+        isDragging && "opacity-50 ring-2 ring-[var(--primary-blue)]",
+        !isDragging && isRecent && "ring-2 ring-[var(--accent-yellow)]"
       )}
       data-testid={`column-${column.id}`}
       data-recent={isRecent ? "true" : undefined}
     >
-      <div className="group/col flex items-center gap-3 pb-3">
-        <div className="h-1.5 w-8 rounded-full bg-[var(--accent-yellow)]" />
+      <div className="group/col flex items-center gap-2 pb-3">
+        {/* Drag handle for column reordering */}
+        <button
+          type="button"
+          {...attributes}
+          {...listeners}
+          className="shrink-0 cursor-grab rounded p-1 text-[var(--gray-text)] opacity-0 transition hover:text-[var(--navy-dark)] group-hover/col:opacity-100 active:cursor-grabbing"
+          aria-label={`Drag to reorder column ${column.title}`}
+          data-testid={`drag-handle-${column.id}`}
+        >
+          <GripIcon />
+        </button>
+        <div className="h-1.5 w-6 rounded-full bg-[var(--accent-yellow)]" />
         <input
           value={draftTitle}
           onChange={(event) => setDraftTitle(event.target.value)}

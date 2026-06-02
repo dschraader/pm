@@ -2,6 +2,7 @@ export type Card = {
   id: string;
   title: string;
   details: string;
+  due_date?: string | null;
 };
 
 export type Column = {

@@ -62,6 +62,12 @@ export const deleteBoard = (boardId: string) =>
 export const fetchBoard = (boardId: string) =>
   json<BoardData>(`/api/boards/${encodeURIComponent(boardId)}`);
 
+export const reorderColumns = (boardId: string, columnIds: string[]) =>
+  json<BoardData>(`/api/boards/${encodeURIComponent(boardId)}/columns/reorder`, {
+    method: "PATCH",
+    body: JSON.stringify({ column_ids: columnIds }),
+  });
+
 export const addColumn = (boardId: string, title: string) =>
   json<BoardData>(`/api/boards/${encodeURIComponent(boardId)}/columns`, {
     method: "POST",
@@ -84,22 +90,24 @@ export const createCard = (
   boardId: string,
   columnId: string,
   title: string,
-  details: string
+  details: string,
+  dueDate?: string | null
 ) =>
   json<BoardData>(
     `/api/boards/${encodeURIComponent(boardId)}/columns/${encodeURIComponent(columnId)}/cards`,
-    { method: "POST", body: JSON.stringify({ title, details }) }
+    { method: "POST", body: JSON.stringify({ title, details, due_date: dueDate ?? null }) }
   );
 
 export const editCard = (
   boardId: string,
   cardId: string,
   title: string,
-  details: string
+  details: string,
+  dueDate?: string | null
 ) =>
   json<BoardData>(
     `/api/boards/${encodeURIComponent(boardId)}/cards/${encodeURIComponent(cardId)}`,
-    { method: "PUT", body: JSON.stringify({ title, details }) }
+    { method: "PUT", body: JSON.stringify({ title, details, due_date: dueDate ?? null }) }
   );
 
 export const deleteCard = (boardId: string, cardId: string) =>
