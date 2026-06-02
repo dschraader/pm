@@ -37,11 +37,13 @@ CREATE INDEX IF NOT EXISTS idx_cards_column_position ON cards(column_id, positio
 CREATE TABLE IF NOT EXISTS chat_messages (
   id         TEXT PRIMARY KEY,
   user_id    TEXT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  board_id   TEXT REFERENCES boards(id) ON DELETE CASCADE,
   role       TEXT NOT NULL CHECK (role IN ('user', 'assistant')),
   content    TEXT NOT NULL,
   created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
 );
 CREATE INDEX IF NOT EXISTS idx_chat_messages_user ON chat_messages(user_id);
+CREATE INDEX IF NOT EXISTS idx_chat_messages_board ON chat_messages(board_id);
 """
 
 SEED_USER = ("user-default", "user")
@@ -89,14 +91,18 @@ def get_db() -> Iterator[sqlite3.Connection]:
 
 
 def _migrate(conn: sqlite3.Connection) -> None:
-    cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
-    if "password_hash" not in cols:
+    user_cols = {row[1] for row in conn.execute("PRAGMA table_info(users)").fetchall()}
+    if "password_hash" not in user_cols:
         conn.execute("ALTER TABLE users ADD COLUMN password_hash TEXT")
         from app.auth import hash_password  # lazy to avoid circular import at module level
         conn.execute(
             "UPDATE users SET password_hash = ? WHERE password_hash IS NULL",
             (hash_password("password"),),
         )
+
+    msg_cols = {row[1] for row in conn.execute("PRAGMA table_info(chat_messages)").fetchall()}
+    if "board_id" not in msg_cols:
+        conn.execute("ALTER TABLE chat_messages ADD COLUMN board_id TEXT REFERENCES boards(id) ON DELETE CASCADE")
 
 
 def init_db() -> None:

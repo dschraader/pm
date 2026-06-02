@@ -54,6 +54,37 @@ def _card_in_board(conn: sqlite3.Connection, board_id: str, card_id: str) -> sql
     return row
 
 
+def add_column(
+    conn: sqlite3.Connection, username: str, board_id: str, title: str
+) -> None:
+    actual = _get_board_id(conn, username, board_id)
+    position = conn.execute(
+        "SELECT COUNT(*) FROM columns WHERE board_id = ?", (actual,)
+    ).fetchone()[0]
+    conn.execute(
+        "INSERT INTO columns (id, board_id, title, position) VALUES (?, ?, ?, ?)",
+        (new_id("col"), actual, title, position),
+    )
+
+
+def delete_column(
+    conn: sqlite3.Connection, username: str, board_id: str, column_id: str
+) -> None:
+    actual = _get_board_id(conn, username, board_id)
+    row = conn.execute(
+        "SELECT position FROM columns WHERE id = ? AND board_id = ?",
+        (column_id, actual),
+    ).fetchone()
+    if not row:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Column not found")
+    position = row["position"]
+    conn.execute("DELETE FROM columns WHERE id = ?", (column_id,))
+    conn.execute(
+        "UPDATE columns SET position = position - 1 WHERE board_id = ? AND position > ?",
+        (actual, position),
+    )
+
+
 def list_boards(conn: sqlite3.Connection, username: str) -> list[dict[str, Any]]:
     rows = conn.execute(
         """

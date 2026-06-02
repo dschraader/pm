@@ -1,9 +1,10 @@
 import { expect, test } from "@playwright/test";
-import { signIn } from "./helpers";
+import { signIn, waitForBoard } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await signIn(page);
-  await expect(page.getByRole("heading", { name: "Kanban Studio" })).toBeVisible();
+  await waitForBoard(page);
+  await expect(page.getByRole("heading", { name: "My Board" })).toBeVisible();
 });
 
 test("loads the kanban board", async ({ page }) => {
@@ -41,4 +42,12 @@ test("moves a card between columns", async ({ page }) => {
   );
   await page.mouse.up();
   await expect(targetColumn.getByTestId("card-card-1")).toBeVisible();
+});
+
+test("adds a new column", async ({ page }) => {
+  await page.getByTestId("add-column-button").click();
+  await page.getByLabel("New column title").fill("Blocked");
+  await page.getByRole("button", { name: /add column/i }).click();
+  await expect(page.getByTestId(/^column-col-/)).toHaveCount(6);
+  await expect(page.getByText("Blocked")).toBeVisible();
 });

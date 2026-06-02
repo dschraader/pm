@@ -59,10 +59,12 @@ export const ChatSidebar = ({
   const messagesEndRef = useRef<HTMLDivElement | null>(null);
 
   useEffect(() => {
-    fetchChatHistory()
+    setMessages([]);
+    setError(null);
+    fetchChatHistory(boardId)
       .then((data) => setMessages(data.messages))
       .catch((err) => setError(errorMessage(err)));
-  }, []);
+  }, [boardId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView?.({ behavior: "smooth" });

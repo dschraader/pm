@@ -62,6 +62,18 @@ export const deleteBoard = (boardId: string) =>
 export const fetchBoard = (boardId: string) =>
   json<BoardData>(`/api/boards/${encodeURIComponent(boardId)}`);
 
+export const addColumn = (boardId: string, title: string) =>
+  json<BoardData>(`/api/boards/${encodeURIComponent(boardId)}/columns`, {
+    method: "POST",
+    body: JSON.stringify({ title }),
+  });
+
+export const deleteColumn = (boardId: string, columnId: string) =>
+  json<BoardData>(
+    `/api/boards/${encodeURIComponent(boardId)}/columns/${encodeURIComponent(columnId)}`,
+    { method: "DELETE" }
+  );
+
 export const renameColumn = (boardId: string, columnId: string, title: string) =>
   json<BoardData>(
     `/api/boards/${encodeURIComponent(boardId)}/columns/${encodeURIComponent(columnId)}`,
@@ -126,8 +138,12 @@ export type ChatResponse = {
   board: BoardData;
 };
 
-export const fetchChatHistory = () =>
-  json<{ messages: ChatMessageRecord[] }>("/api/ai/chat/history");
+export const fetchChatHistory = (boardId?: string) => {
+  const url = boardId
+    ? `/api/ai/chat/history?board_id=${encodeURIComponent(boardId)}`
+    : "/api/ai/chat/history";
+  return json<{ messages: ChatMessageRecord[] }>(url);
+};
 
 export const sendChatMessage = (message: string, boardId?: string) =>
   json<ChatResponse>("/api/ai/chat", {

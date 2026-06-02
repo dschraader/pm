@@ -128,6 +128,43 @@ def test_board_scoped_move_card(auth_client):
     assert done_col["cardIds"][0] == "card-1"
 
 
+def test_add_column_appends_to_board(auth_client):
+    response = auth_client.post(
+        "/api/boards/board-default/columns", json={"title": "Archived"}
+    )
+    assert response.status_code == 200
+    data = response.json()
+    col_titles = [c["title"] for c in data["columns"]]
+    assert col_titles[-1] == "Archived"
+    assert len(col_titles) == 6
+
+
+def test_add_column_requires_title(auth_client):
+    assert auth_client.post("/api/boards/board-default/columns", json={}).status_code == 422
+
+
+def test_delete_column_removes_it_and_cards(auth_client):
+    response = auth_client.delete("/api/boards/board-default/columns/col-backlog")
+    assert response.status_code == 200
+    data = response.json()
+    col_ids = [c["id"] for c in data["columns"]]
+    assert "col-backlog" not in col_ids
+    assert "card-1" not in data["cards"]
+    assert "card-2" not in data["cards"]
+
+
+def test_delete_column_reorders_positions(auth_client):
+    response = auth_client.delete("/api/boards/board-default/columns/col-discovery")
+    assert response.status_code == 200
+    data = response.json()
+    col_ids = [c["id"] for c in data["columns"]]
+    assert col_ids == ["col-backlog", "col-progress", "col-review", "col-done"]
+
+
+def test_delete_column_not_found(auth_client):
+    assert auth_client.delete("/api/boards/board-default/columns/col-missing").status_code == 404
+
+
 def test_cross_user_board_isolation(client):
     client.post("/api/register", json={"username": "user2", "password": "password123"})
     client.post("/api/login", json={"username": "user2", "password": "password123"})

@@ -15,17 +15,31 @@ def _user_id(conn: sqlite3.Connection, username: str) -> str:
     return row["id"]
 
 
-def load_history(conn: sqlite3.Connection, username: str) -> list[ChatMessage]:
-    rows = conn.execute(
-        """
-        SELECT m.role, m.content, m.created_at
-        FROM chat_messages m
-        JOIN users u ON u.id = m.user_id
-        WHERE u.username = ?
-        ORDER BY m.rowid
-        """,
-        (username,),
-    ).fetchall()
+def load_history(
+    conn: sqlite3.Connection, username: str, board_id: str | None = None
+) -> list[ChatMessage]:
+    if board_id:
+        rows = conn.execute(
+            """
+            SELECT m.role, m.content, m.created_at
+            FROM chat_messages m
+            JOIN users u ON u.id = m.user_id
+            WHERE u.username = ? AND m.board_id = ?
+            ORDER BY m.rowid
+            """,
+            (username, board_id),
+        ).fetchall()
+    else:
+        rows = conn.execute(
+            """
+            SELECT m.role, m.content, m.created_at
+            FROM chat_messages m
+            JOIN users u ON u.id = m.user_id
+            WHERE u.username = ? AND m.board_id IS NULL
+            ORDER BY m.rowid
+            """,
+            (username,),
+        ).fetchall()
     return [
         ChatMessage(
             role=row["role"], content=row["content"], created_at=row["created_at"]
@@ -40,13 +54,14 @@ def append_exchange(
     *,
     user_text: str,
     assistant_text: str,
+    board_id: str | None = None,
 ) -> None:
     user_id = _user_id(conn, username)
     conn.execute(
-        "INSERT INTO chat_messages (id, user_id, role, content) VALUES (?, ?, 'user', ?)",
-        (new_id("msg"), user_id, user_text),
+        "INSERT INTO chat_messages (id, user_id, board_id, role, content) VALUES (?, ?, ?, 'user', ?)",
+        (new_id("msg"), user_id, board_id, user_text),
     )
     conn.execute(
-        "INSERT INTO chat_messages (id, user_id, role, content) VALUES (?, ?, 'assistant', ?)",
-        (new_id("msg"), user_id, assistant_text),
+        "INSERT INTO chat_messages (id, user_id, board_id, role, content) VALUES (?, ?, ?, 'assistant', ?)",
+        (new_id("msg"), user_id, board_id, assistant_text),
     )

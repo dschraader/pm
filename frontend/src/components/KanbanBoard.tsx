@@ -24,10 +24,10 @@ type KanbanBoardProps = {
   loadError: string | null;
   mutationError: string | null;
   setMutationError: (msg: string | null) => void;
-  onLogout?: () => void;
   onRenameBoard?: (boardId: string, title: string) => void;
   onDeleteBoard?: (boardId: string) => void;
   canDeleteBoard?: boolean;
+  onAddColumn?: (boardId: string, title: string) => void;
 };
 
 const errorMessage = (err: unknown): string => {
@@ -55,14 +55,16 @@ export const KanbanBoard = ({
   loadError,
   mutationError,
   setMutationError,
-  onLogout,
   onRenameBoard,
   onDeleteBoard,
   canDeleteBoard,
+  onAddColumn,
 }: KanbanBoardProps) => {
   const [activeCardId, setActiveCardId] = useState<string | null>(null);
   const [editingBoardTitle, setEditingBoardTitle] = useState(false);
   const [boardTitleDraft, setBoardTitleDraft] = useState("");
+  const [addingColumn, setAddingColumn] = useState(false);
+  const [newColumnTitle, setNewColumnTitle] = useState("");
 
   const sensors = useSensors(
     useSensor(PointerSensor, {
@@ -133,6 +135,36 @@ export const KanbanBoard = ({
         details || "No details yet."
       );
       setBoard(fromServer);
+    } catch (err) {
+      setMutationError(errorMessage(err));
+    }
+  };
+
+  const handleDeleteColumn = (columnId: string) => {
+    if (!board) return;
+    const optimistic: BoardData = {
+      ...board,
+      columns: board.columns.filter((col) => col.id !== columnId),
+      cards: Object.fromEntries(
+        Object.entries(board.cards).filter(([, card]) => {
+          const col = board.columns.find((c) => c.id === columnId);
+          return !col?.cardIds.includes(card.id);
+        })
+      ),
+    };
+    runMutation(optimistic, api.deleteColumn(boardId, columnId));
+  };
+
+  const handleAddColumn = async () => {
+    const title = newColumnTitle.trim();
+    if (!title || !board) return;
+    setAddingColumn(false);
+    setNewColumnTitle("");
+    setMutationError(null);
+    try {
+      const fromServer = await api.addColumn(boardId, title);
+      setBoard(fromServer);
+      if (onAddColumn) onAddColumn(boardId, title);
     } catch (err) {
       setMutationError(errorMessage(err));
     }
@@ -242,31 +274,6 @@ export const KanbanBoard = ({
                   Delete board
                 </button>
               )}
-              {onLogout && (
-                <button
-                  type="button"
-                  onClick={onLogout}
-                  className="flex items-center gap-2 rounded-full border border-[var(--stroke)] px-4 py-2.5 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--navy-dark)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
-                >
-                  <svg
-                    xmlns="http://www.w3.org/2000/svg"
-                    width="14"
-                    height="14"
-                    viewBox="0 0 24 24"
-                    fill="none"
-                    stroke="currentColor"
-                    strokeWidth="2"
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    aria-hidden="true"
-                  >
-                    <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4" />
-                    <polyline points="16 17 21 12 16 7" />
-                    <line x1="21" y1="12" x2="9" y2="12" />
-                  </svg>
-                  Log out
-                </button>
-              )}
             </div>
           </div>
           {mutationError && (
@@ -312,8 +319,59 @@ export const KanbanBoard = ({
                   onRename={handleRenameColumn}
                   onAddCard={handleAddCard}
                   onDeleteCard={handleDeleteCard}
+                  onDeleteColumn={handleDeleteColumn}
                 />
               ))}
+
+              {/* Add column inline form */}
+              {addingColumn ? (
+                <div className="flex w-[272px] shrink-0 flex-col gap-3 rounded-3xl border border-dashed border-[var(--primary-blue)] bg-[var(--surface-strong)] p-4">
+                  <input
+                    autoFocus
+                    value={newColumnTitle}
+                    onChange={(e) => setNewColumnTitle(e.target.value)}
+                    onKeyDown={(e) => {
+                      if (e.key === "Enter") handleAddColumn();
+                      if (e.key === "Escape") {
+                        setAddingColumn(false);
+                        setNewColumnTitle("");
+                      }
+                    }}
+                    placeholder="Column title"
+                    className="rounded-xl border border-[var(--stroke)] bg-white px-3 py-2 text-sm text-[var(--navy-dark)] outline-none transition focus:border-[var(--primary-blue)]"
+                    aria-label="New column title"
+                  />
+                  <div className="flex gap-2">
+                    <button
+                      type="button"
+                      onClick={handleAddColumn}
+                      disabled={!newColumnTitle.trim()}
+                      className="flex-1 rounded-full bg-[var(--secondary-purple)] px-3 py-2 text-xs font-semibold text-white transition hover:brightness-110 disabled:opacity-50"
+                    >
+                      Add column
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        setAddingColumn(false);
+                        setNewColumnTitle("");
+                      }}
+                      className="rounded-full border border-[var(--stroke)] px-3 py-2 text-xs font-semibold text-[var(--gray-text)] transition hover:border-[var(--primary-blue)]"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              ) : (
+                <button
+                  type="button"
+                  onClick={() => setAddingColumn(true)}
+                  className="flex w-[272px] shrink-0 items-center justify-center gap-2 rounded-3xl border border-dashed border-[var(--stroke)] bg-transparent py-8 text-xs font-semibold uppercase tracking-[0.2em] text-[var(--gray-text)] transition hover:border-[var(--primary-blue)] hover:text-[var(--primary-blue)]"
+                  data-testid="add-column-button"
+                >
+                  + Add column
+                </button>
+              )}
             </section>
           </div>
           <DragOverlay>

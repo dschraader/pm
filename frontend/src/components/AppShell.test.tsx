@@ -79,6 +79,19 @@ describe("AppShell", () => {
     expect(screen.getByTestId("board-tab-board-2")).toBeInTheDocument();
   });
 
+  it("shows username in the top bar", async () => {
+    fetchMock.mockImplementation(
+      routeMock({
+        "/api/me": () => okResponse({ username: "alice" }),
+        "/api/boards": () => okResponse([seedBoardSummary]),
+        [boardRoute]: () => okResponse(seedBoard),
+        "/api/ai/chat/history": () => okResponse({ messages: [] }),
+      })
+    );
+    render(<AppShell />);
+    expect(await screen.findByTestId("username-display")).toHaveTextContent("alice");
+  });
+
   it("logout returns to the login form", async () => {
     fetchMock.mockImplementation(
       routeMock({

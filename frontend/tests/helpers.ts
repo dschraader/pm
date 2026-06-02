@@ -10,3 +10,7 @@ export const signIn = async (
   await page.getByLabel("Password").fill(password);
   await page.getByRole("button", { name: "Sign in" }).click();
 };
+
+export const waitForBoard = async (page: Page) => {
+  await page.waitForSelector('[data-testid^="board-tab-"]');
+};

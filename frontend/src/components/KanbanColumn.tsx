@@ -15,7 +15,27 @@ type KanbanColumnProps = {
   onRename: (columnId: string, title: string) => void;
   onAddCard: (columnId: string, title: string, details: string) => void;
   onDeleteCard: (columnId: string, cardId: string) => void;
+  onDeleteColumn?: (columnId: string) => void;
 };
+
+const TrashIcon = () => (
+  <svg
+    xmlns="http://www.w3.org/2000/svg"
+    width="13"
+    height="13"
+    viewBox="0 0 24 24"
+    fill="none"
+    stroke="currentColor"
+    strokeWidth="2"
+    strokeLinecap="round"
+    strokeLinejoin="round"
+    aria-hidden="true"
+  >
+    <path d="M3 6h18" />
+    <path d="M19 6v14c0 1-1 2-2 2H7c-1 0-2-1-2-2V6" />
+    <path d="M8 6V4c0-1 1-2 2-2h4c1 0 2 1 2 2v2" />
+  </svg>
+);
 
 export const KanbanColumn = ({
   column,
@@ -23,6 +43,7 @@ export const KanbanColumn = ({
   onRename,
   onAddCard,
   onDeleteCard,
+  onDeleteColumn,
 }: KanbanColumnProps) => {
   const { setNodeRef, isOver } = useDroppable({ id: column.id });
   const [draftTitle, setDraftTitle] = useState(column.title);
@@ -52,7 +73,7 @@ export const KanbanColumn = ({
       data-testid={`column-${column.id}`}
       data-recent={isRecent ? "true" : undefined}
     >
-      <div className="flex items-center gap-3 pb-3">
+      <div className="group/col flex items-center gap-3 pb-3">
         <div className="h-1.5 w-8 rounded-full bg-[var(--accent-yellow)]" />
         <input
           value={draftTitle}
@@ -72,6 +93,17 @@ export const KanbanColumn = ({
         <span className="shrink-0 rounded-full bg-[var(--surface)] px-2 py-0.5 text-xs font-bold tabular-nums text-[var(--gray-text)]">
           {cards.length}
         </span>
+        {onDeleteColumn && (
+          <button
+            type="button"
+            onClick={() => onDeleteColumn(column.id)}
+            className="shrink-0 rounded-full p-1.5 text-[var(--gray-text)] opacity-0 transition hover:bg-red-50 hover:text-red-500 group-hover/col:opacity-100"
+            aria-label={`Delete column ${column.title}`}
+            data-testid={`delete-column-${column.id}`}
+          >
+            <TrashIcon />
+          </button>
+        )}
       </div>
       <div className="flex flex-1 flex-col gap-3">
         <SortableContext items={column.cardIds} strategy={verticalListSortingStrategy}>

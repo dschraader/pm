@@ -1,10 +1,11 @@
 import { expect, test } from "@playwright/test";
-import { signIn } from "./helpers";
+import { signIn, waitForBoard } from "./helpers";
 
 test.beforeEach(async ({ page }) => {
   await signIn(page);
+  await waitForBoard(page);
   await expect(
-    page.getByRole("heading", { name: "Kanban Studio" })
+    page.getByRole("heading", { name: "My Board" })
   ).toBeVisible();
 });
 
@@ -91,4 +92,15 @@ test("moving a card survives a reload", async ({ page }) => {
   await expect(
     page.getByTestId("column-col-done").getByTestId("card-card-2")
   ).toBeVisible();
+});
+
+test("adding a column survives a reload", async ({ page }) => {
+  const unique = `Column ${Date.now()}`;
+  await page.getByTestId("add-column-button").click();
+  await page.getByLabel("New column title").fill(unique);
+  await page.getByRole("button", { name: /add column/i }).click();
+  await expect(page.getByText(unique)).toBeVisible();
+
+  await page.reload();
+  await expect(page.getByText(unique)).toBeVisible();
 });

@@ -151,6 +151,28 @@ def rename_board_route(
     return board.rename_board(conn, username, board_id, body.title)
 
 
+@app.post("/api/boards/{board_id}/columns")
+def add_column_route(
+    board_id: str,
+    body: RenameColumnRequest,
+    username: str = Depends(current_user),
+    conn=Depends(db.get_db),
+):
+    board.add_column(conn, username, board_id, body.title)
+    return board.load_board(conn, username, board_id)
+
+
+@app.delete("/api/boards/{board_id}/columns/{column_id}")
+def delete_column_route(
+    board_id: str,
+    column_id: str,
+    username: str = Depends(current_user),
+    conn=Depends(db.get_db),
+):
+    board.delete_column(conn, username, board_id, column_id)
+    return board.load_board(conn, username, board_id)
+
+
 @app.put("/api/boards/{board_id}/columns/{column_id}")
 def rename_column_v2(
     board_id: str,
@@ -315,10 +337,11 @@ def _apply_mutation(conn, username: str, mutation, board_id: str | None) -> None
 
 @app.get("/api/ai/chat/history")
 def chat_history(
+    board_id: str | None = None,
     username: str = Depends(current_user),
     conn=Depends(db.get_db),
 ):
-    messages = chat.load_history(conn, username)
+    messages = chat.load_history(conn, username, board_id)
     return {"messages": [m.model_dump() for m in messages]}
 
 
@@ -347,6 +370,7 @@ def ai_chat(
         username,
         user_text=body.message,
         assistant_text=response.reply,
+        board_id=body.board_id,
     )
 
     for mutation in response.mutations:
