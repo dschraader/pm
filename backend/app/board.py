@@ -233,6 +233,9 @@ def create_card(
     return card_id
 
 
+_UNCHANGED = object()  # sentinel: caller did not supply due_date, leave it as-is
+
+
 def edit_card(
     conn: sqlite3.Connection,
     username: str,
@@ -240,14 +243,20 @@ def edit_card(
     title: str,
     details: str,
     board_id: str | None = None,
-    due_date: str | None = None,
+    due_date: str | None = _UNCHANGED,  # type: ignore[assignment]
 ) -> None:
     actual_board_id = _get_board_id(conn, username, board_id)
     _card_in_board(conn, actual_board_id, card_id)
-    conn.execute(
-        "UPDATE cards SET title = ?, details = ?, due_date = ? WHERE id = ?",
-        (title, details, due_date, card_id),
-    )
+    if due_date is _UNCHANGED:
+        conn.execute(
+            "UPDATE cards SET title = ?, details = ? WHERE id = ?",
+            (title, details, card_id),
+        )
+    else:
+        conn.execute(
+            "UPDATE cards SET title = ?, details = ?, due_date = ? WHERE id = ?",
+            (title, details, due_date, card_id),
+        )
 
 
 def delete_card(

@@ -77,6 +77,7 @@ export const KanbanColumn = ({
     transform,
     transition,
     isDragging,
+    isOver,
   } = useSortable({ id: column.id });
   const [draftTitle, setDraftTitle] = useState(column.title);
   const recent = useContext(RecentChangesContext);
@@ -107,7 +108,7 @@ export const KanbanColumn = ({
       className={clsx(
         "flex w-[272px] shrink-0 flex-col rounded-3xl border border-[var(--stroke)] bg-[var(--surface-strong)] p-4 shadow-[var(--shadow)] transition",
         isDragging && "opacity-50 ring-2 ring-[var(--primary-blue)]",
-        !isDragging && isRecent && "ring-2 ring-[var(--accent-yellow)]"
+        !isDragging && (isOver || isRecent) && "ring-2 ring-[var(--accent-yellow)]"
       )}
       data-testid={`column-${column.id}`}
       data-recent={isRecent ? "true" : undefined}
