@@ -189,6 +189,32 @@ def test_ai_chat_delete_column_mutation(auth_client, monkeypatch):
     assert len(col_ids) == 4
 
 
+def test_ai_chat_edit_card_preserves_due_date(auth_client, monkeypatch):
+    from app import ai as ai_module
+
+    auth_client.put(
+        "/api/boards/board-default/cards/card-1",
+        json={"title": "Title", "details": "d", "due_date": "2026-09-01"},
+    )
+
+    def fake_chat(board_state, history, message):
+        return ai_module.AIResponse(
+            reply="Renamed.",
+            mutations=[
+                ai_module.EditCardMutation(
+                    type="edit_card", card_id="card-1", title="Renamed", details="d"
+                )
+            ],
+        )
+
+    monkeypatch.setattr(ai, "chat", fake_chat)
+    response = auth_client.post("/api/ai/chat", json={"message": "rename card-1"})
+    assert response.status_code == 200
+    card = response.json()["board"]["cards"]["card-1"]
+    assert card["title"] == "Renamed"
+    assert card["due_date"] == "2026-09-01"
+
+
 def test_ai_chat_missing_api_key_returns_500(auth_client, monkeypatch):
     def fake_chat(board_state, history, message):
         raise ai.AIConfigError("OPENROUTER_API_KEY is not set")
